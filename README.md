@@ -8,7 +8,6 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white&labelColor=0b0914)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?logo=tailwindcss&logoColor=white&labelColor=0b0914)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white&labelColor=0b0914)
-![three.js](https://img.shields.io/badge/three.js-R3F-f5b942?logo=threedotjs&logoColor=white&labelColor=0b0914)
 
 </div>
 
@@ -16,12 +15,12 @@
 
 ## What it is
 
-My personal portfolio. It opens with a short real-time 3D cut-in, then drops you into a navigation wheel inspired by the Walpurgisnacht stage labyrinth: a giant clockwork dial, pivoted off-screen, that turns a quarter at a time to bring each chapter of the site into view.
+My personal portfolio. It opens with a short 2D anime-style cut-in, then drops you into a navigation wheel inspired by the Walpurgisnacht stage labyrinth: a giant clockwork dial, pivoted off-screen, that turns a quarter at a time to bring each chapter of the site into view.
 
 ## Highlights
 
 ### 🎬 Entrance sequence
-An ~8-second shot-by-shot 3D intro built with React Three Fiber and post-processing. It plays once per session; the replay button in the top-right corner runs it again.
+An ~8-second, nine-shot 2D intro drawn on an HTML canvas. It plays once per session; the replay button in the top-right corner runs it again.
 
 ### ⚙️ Labyrinth navigation (`LabyrinthNav`)
 - **Four stages on one wheel.** Profile, Projects, Experience & Stack, and Contact & CV each take a 90° quadrant of a single 360° dial.
@@ -63,14 +62,13 @@ npm run dev        # http://localhost:5173
 src/
 ├── App.tsx                    # Entrance → labyrinth hand-off, replay button
 ├── components/
-│   ├── EntranceSequence.tsx   # 3D intro (React Three Fiber)
+│   ├── EntranceSequence.tsx   # 2D canvas intro
 │   └── LabyrinthNav.tsx       # Circular four-stage navigation map
 ├── data/
 │   └── profile.ts             # All site copy: bio, projects, experience, skills
 └── hooks/                     # useReducedMotion, useMediaQuery
 public/
-├── cv.pdf                     # Linked from the Contact & CV stage
-└── homura_akemi_-_3d_model.glb
+└── cv.pdf                     # Linked from the Contact & CV stage
 ```
 
 ## Editing content
@@ -80,7 +78,6 @@ All copy lives in [`src/data/profile.ts`](src/data/profile.ts); components never
 ## Credits
 
 - The art direction is a fan homage to the witch labyrinths of *Puella Magi Madoka Magica*. Its characters and setting belong to their respective rights holders.
-- `homura_akemi_-_3d_model.glb` is a third-party fan-made model. Check its licence and credit its author before making this repository public or deploying the site.
 
 ---
 
