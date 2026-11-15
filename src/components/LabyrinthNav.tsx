@@ -22,6 +22,8 @@ import {
 } from 'lucide-react'
 import { profile, type ExperienceEntry } from '../data/profile'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { bodyPath, eyePoints, legsPath, polarPt } from './lizardGeometry'
+import { TwinLizardSeal } from './TwinLizardSeal'
 
 /* ── Motion constants: wheel and label counter-rotation must share these exactly. ── */
 const TURN_MS = 900
@@ -437,6 +439,32 @@ export function LabyrinthNav() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,0,0,0.6))]" />
       </div>
 
+      {/* Corner crests: watermarks only, hidden on phones so wheel labels stay clear. */}
+      <div className="pointer-events-none absolute inset-0 hidden sm:block" aria-hidden="true">
+        <div className="absolute -top-3 right-3 transition-opacity duration-500" style={{ opacity: selected ? 0.04 : 0.16 }}>
+          <CharacterCrest slug="ultimate-madoka" size={150} />
+        </div>
+        <div className="absolute bottom-4 right-4" style={{ opacity: 0.24 }}>
+          <CharacterCrest slug="devil-homura" size={wide ? 240 : 180} />
+        </div>
+        {/* Counterweight medallion nested in the same corner frame; kicks on every stage change. */}
+        <div className="absolute bottom-4 right-4 flex items-center justify-center" style={{ opacity: 0.32, width: wide ? 240 : 180, height: wide ? 240 : 180 }}>
+          <TwinLizardSeal size="62%" period={60} boostKey={step} eyeGlowIntensity={1.2} reducedMotion={reduced} />
+        </div>
+        <div className="absolute" style={{ opacity: 0.14, left: Math.max(8, cx - 95), top: Math.min(h - 200, cy - 95) }}>
+          <CharacterCrest slug="alter-sayaka" size={190} />
+        </div>
+      </div>
+
+      {/* Identity block: upper-left, outside the wheel rim. */}
+      <div className={`absolute flex items-center ${wide ? 'left-6 top-4 gap-3' : 'left-3 top-3 gap-2'}`}>
+        <CharacterCrest slug="kaiten-homura" size={wide ? 64 : 40} />
+        <div>
+          <p className={`font-serif leading-none tracking-[0.18em] text-[#f7f1e3] ${wide ? 'text-2xl' : 'text-base'}`}>BRYANT LEUNG</p>
+          <p className={`mt-1 uppercase tracking-[0.3em] text-[#f5b942]/80 ${wide ? 'text-[10px]' : 'text-[8px]'}`}>Computer Science &amp; AI</p>
+        </div>
+      </div>
+
       <p className="sr-only" aria-live="polite">
         Stage {chapter.numeral} of IV: {chapter.title}
       </p>
@@ -616,6 +644,11 @@ export function LabyrinthNav() {
             </div>
           )
         })}
+      </div>
+
+      {/* Non-rotating overlay so the runner travels in screen space while the wheel turns beneath it. */}
+      <div className="pointer-events-none absolute" style={{ left: cx - R, top: cy - R, width: 2 * R, height: 2 * R }}>
+        <LizardRunner step={step} reduced={reduced} />
       </div>
 
       {/* Stage title, fixed inside the active quadrant's interior. */}
@@ -817,5 +850,170 @@ function DetailPanel({
         </div>
       )}
     </motion.section>
+  )
+}
+
+/* ── Character crests: gold-engraved renders in a stained-glass diamond frame. ── */
+const LAVENDER = '#e2d9f3'
+const CREST_FILTER = 'brightness(0) saturate(100%) invert(76%) sepia(48%) saturate(634%) hue-rotate(356deg)'
+const CREST_MASK = 'radial-gradient(circle at 50% 45%, #000 48%, transparent 72%)'
+const DIAMOND = (r: number) => `0,${-r} ${r},0 0,${r} ${-r},0`
+const CARDINALS: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+
+function CharacterCrest({ slug, size }: { slug: string; size: number }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden="true">
+      <svg viewBox="-50 -50 100 100" className="absolute inset-0 h-full w-full overflow-visible">
+        {/* Stained-glass panes at each diamond point, lavender diagonal facets between them. */}
+        {CARDINALS.map(([x, y]) => (
+          <polygon key={`p${x}${y}`} points={`${x * 47},${y * 47} ${x * 33 - y * 8},${y * 33 - x * 8} ${x * 33 + y * 8},${y * 33 + x * 8}`} fill={GOLD} fillOpacity="0.22" stroke={GOLD} strokeWidth="0.5" />
+        ))}
+        {CARDINALS.map(([x, y]) => {
+          const [dx, dy] = [(x - y) * 0.5, (y + x) * 0.5]
+          return <polygon key={`f${x}${y}`} points={`${dx * 46},${dy * 46} ${dx * 38 + (x + y) * 4},${dy * 38 + (y - x) * 4} ${dx * 34},${dy * 34} ${dx * 38 - (x + y) * 4},${dy * 38 - (y - x) * 4}`} fill={LAVENDER} fillOpacity="0.08" stroke={LAVENDER} strokeOpacity="0.45" strokeWidth="0.3" />
+        })}
+        <polygon points={DIAMOND(48)} fill="none" stroke={GOLD} strokeWidth="0.9" />
+        <polygon points={DIAMOND(44)} fill="none" stroke={GOLD} strokeOpacity="0.45" strokeWidth="0.35" />
+        <circle r="34" fill="#0b0914" fillOpacity="0.55" stroke={GOLD} strokeWidth="0.7" />
+        <circle r="31.5" fill="none" stroke={LAVENDER} strokeOpacity="0.35" strokeWidth="0.25" strokeDasharray="0.8 1.2" />
+        {CARDINALS.map(([x, y]) => (
+          <circle key={`d${x}${y}`} cx={x * 51} cy={y * 51} r="1.1" fill={GOLD} />
+        ))}
+      </svg>
+      <div className="absolute inset-[19%] overflow-hidden rounded-full">
+        {failed ? (
+          <CrestEmblem />
+        ) : (
+          <img
+            src={`${import.meta.env.BASE_URL}crests/${slug}.png`}
+            alt=""
+            draggable={false}
+            onError={() => setFailed(true)}
+            className="h-full w-full object-contain object-top"
+            style={{ filter: CREST_FILTER, maskImage: CREST_MASK, WebkitMaskImage: CREST_MASK }}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Fallback when a render is missing: runic diamond so no broken-image icon ever shows. */
+function CrestEmblem() {
+  return (
+    <svg viewBox="-50 -50 100 100" className="h-full w-full">
+      <polygon points={DIAMOND(34)} fill="none" stroke={GOLD} strokeWidth="1.6" />
+      <polygon points={DIAMOND(22)} fill={GOLD} fillOpacity="0.12" stroke={GOLD} strokeWidth="1" />
+      <path d="M0 -34 V34 M-34 0 H34" stroke={LAVENDER} strokeOpacity="0.5" strokeWidth="0.6" />
+      <circle r="7" fill="none" stroke={GOLD} strokeWidth="1.2" />
+      <path d="M-3 -16 L0 -11 L3 -16 M-3 16 L0 11 L3 16 M-16 -3 L-11 0 L-16 3 M16 -3 L11 0 L16 3" fill="none" stroke={GOLD} strokeWidth="1" strokeLinejoin="round" />
+      <circle r="2" fill={GOLD} />
+    </svg>
+  )
+}
+
+/* ── Stage-transition lizard runner: slithers along the rim, escorting the arriving stage to 1:30. ── */
+const RUN_MS = 500
+const RUN_R = 99.5
+const RUN_END = 45
+const RUN_LEN = 24
+const DEG_PER_UNIT = 180 / (Math.PI * RUN_R)
+
+function LizardRunner({ step, reduced }: { step: number; reduced: boolean }) {
+  const gradId = useId()
+  const group = useRef<SVGGElement>(null)
+  const body = useRef<SVGPathElement>(null)
+  const legs = useRef<SVGPathElement>(null)
+  const legsInk = useRef<SVGPathElement>(null)
+  const eyes = useRef<SVGGElement>(null)
+  const trail = useRef<SVGPathElement>(null)
+  const grad = useRef<SVGLinearGradientElement>(null)
+  const pulse = useRef<SVGCircleElement>(null)
+  const run = useRef({ last: step, head: RUN_END, running: false, raf: 0 })
+
+  useEffect(() => {
+    const st = run.current
+    const d = step - st.last
+    st.last = step
+    if (!d || reduced) return
+    const from = Math.max(RUN_END - 270, Math.min(RUN_END + 270, (st.running ? st.head : RUN_END) - 90 * d))
+    const dir = Math.sign(RUN_END - from)
+    const start = performance.now()
+    cancelAnimationFrame(st.raf)
+    st.running = true
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / RUN_MS)
+      const p = 1 - (1 - t) ** 3 // power3.out
+      const head = from + (RUN_END - from) * p
+      st.head = head
+      const spine = Array.from({ length: 22 }, (_, k) => {
+        const u = k / 21
+        const lateral = 2.2 * Math.sin(p * Math.PI * 5 - u * Math.PI * 2) * (0.25 + u)
+        return polarPt(head - dir * u * RUN_LEN * DEG_PER_UNIT, RUN_R + lateral)
+      })
+      body.current?.setAttribute('d', bodyPath(spine, 2.6))
+      const ld = legsPath(spine, 2.6, 3.6, false)
+      legs.current?.setAttribute('d', ld)
+      legsInk.current?.setAttribute('d', ld)
+      eyePoints(spine, 2.6).forEach((e, i) => {
+        const c = eyes.current?.children[i]
+        c?.setAttribute('cx', e.x.toFixed(2))
+        c?.setAttribute('cy', e.y.toFixed(2))
+      })
+      group.current?.setAttribute('opacity', (t < 0.15 ? t / 0.15 : t > 0.85 ? (1 - t) / 0.15 : 1).toFixed(3))
+
+      // Tapered crimson → gold ribbon from the start angle to the tail tip.
+      const tailAng = head - dir * RUN_LEN * DEG_PER_UNIT
+      if (dir * (tailAng - from) > 0.5) {
+        const pts = Array.from({ length: 17 }, (_, k) => k / 16)
+        const side = (sgn: number) => pts.map((u) => polarPt(from + (tailAng - from) * u, RUN_R + sgn * 1.4 * u))
+        const outer = side(1).map((q) => `${q.x.toFixed(2)} ${q.y.toFixed(2)}`)
+        const inner = side(-1).reverse().map((q) => `${q.x.toFixed(2)} ${q.y.toFixed(2)}`)
+        trail.current?.setAttribute('d', `M ${outer.join(' L ')} L ${inner.join(' L ')} Z`)
+        const a = polarPt(from, RUN_R)
+        const b = polarPt(tailAng, RUN_R)
+        grad.current?.setAttribute('x1', a.x.toFixed(2))
+        grad.current?.setAttribute('y1', a.y.toFixed(2))
+        grad.current?.setAttribute('x2', b.x.toFixed(2))
+        grad.current?.setAttribute('y2', b.y.toFixed(2))
+      } else trail.current?.setAttribute('d', '')
+      trail.current?.setAttribute('opacity', (t < 0.7 ? 0.9 : (0.9 * (1 - t)) / 0.3).toFixed(3))
+
+      const s = t > 0.85 ? (t - 0.85) / 0.15 : 0
+      pulse.current?.setAttribute('r', (2 + 8 * s).toFixed(2))
+      pulse.current?.setAttribute('opacity', s > 0 ? (0.8 * (1 - s)).toFixed(3) : '0')
+
+      if (t < 1) st.raf = requestAnimationFrame(tick)
+      else st.running = false
+    }
+    st.raf = requestAnimationFrame(tick)
+  }, [step, reduced])
+
+  useEffect(() => () => cancelAnimationFrame(run.current.raf), [])
+
+  const endPt = polarPt(RUN_END, RUN_R)
+  return (
+    <svg viewBox="-100 -100 200 200" className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradId} ref={grad} gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#e11d48" stopOpacity="0" />
+          <stop offset="0.4" stopColor="#e11d48" stopOpacity="0.7" />
+          <stop offset="1" stopColor={GOLD} />
+        </linearGradient>
+      </defs>
+      <path ref={trail} fill={`url(#${gradId})`} opacity="0" style={{ filter: 'drop-shadow(0 0 2px #e11d48)' }} />
+      <g ref={group} opacity="0">
+        <path ref={legs} fill="none" stroke={GOLD} strokeWidth="1.3" strokeLinecap="round" />
+        <path ref={legsInk} fill="none" stroke="#050507" strokeWidth="0.6" strokeLinecap="round" />
+        <path ref={body} fill="#050507" stroke={GOLD} strokeWidth="0.45" strokeLinejoin="round" />
+        <g ref={eyes} fill="#e11d48" style={{ filter: 'drop-shadow(0 0 1.2px #e11d48)' }}>
+          <circle r="0.42" />
+          <circle r="0.42" />
+        </g>
+      </g>
+      <circle ref={pulse} cx={endPt.x} cy={endPt.y} r="2" fill="none" stroke={GOLD} strokeWidth="0.5" opacity="0" />
+    </svg>
   )
 }
