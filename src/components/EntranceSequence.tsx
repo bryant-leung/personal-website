@@ -9,6 +9,7 @@ import Lenis from 'lenis'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { TwinLizardSeal } from './TwinLizardSeal'
+import { playSmokeWhoosh } from '../utils/soundEngine'
 
 export { ENTRANCE_DONE_KEY } from './entranceKey'
 
@@ -344,6 +345,8 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
         scrub: true,
         animation: tl,
         onUpdate: (self) => {
+          // Whoosh once as the orb dissolves into smoke (scrolling forward past 12%).
+          if (progress.current < 0.12 && self.progress >= 0.12) playSmokeWhoosh()
           progress.current = self.progress
           if (self.progress > 0.995 && state.current.active) state.current.onComplete()
         },

@@ -24,6 +24,7 @@ import { profile, type ExperienceEntry } from '../data/profile'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { polarPt } from './lizardGeometry'
 import { TwinLizardSeal } from './TwinLizardSeal'
+import { playClockTick } from '../utils/soundEngine'
 
 /* ── Motion constants: wheel and label counter-rotation must share these exactly. ── */
 const TURN_MS = 900
@@ -343,6 +344,11 @@ export function LabyrinthNav() {
   const active = mod4(step)
   const chapter = CHAPTERS[active]
   const selected = PLACED.find((p) => p.node.id === selectedId) ?? null
+  const firstStage = useRef(true)
+  useEffect(() => {
+    if (firstStage.current) firstStage.current = false
+    else playClockTick()
+  }, [active])
 
   const turnTo = useCallback((q: number) => {
     setStep((s) => {
