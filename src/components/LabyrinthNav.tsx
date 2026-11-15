@@ -80,10 +80,11 @@ interface Chapter {
 
 const github = profile.socials.find((s) => s.icon === 'github')
 const education = profile.experience.filter((e) => e.kind === 'education')
-const roles = profile.experience.filter((e) => e.kind !== 'education')
+const roles = profile.experience.filter((e) => e.kind === 'work')
+const leadership = profile.experience.filter((e) => e.kind === 'leadership')
 const skill = (category: string) => profile.skills.find((s) => s.category === category)?.items ?? []
 const techGroups = profile.skills.filter((s) => s.category !== 'Certifications' && s.category !== 'Spoken')
-const fyp = profile.projects[0]
+const fyp = profile.projects.find((p) => p.id === 'graphrag-disaster')!
 const finalYearModules = education[0]?.bullets.find((b) => b.startsWith('Final year'))
 const cvActions: Action[] = [
   { label: 'Download CV', href: profile.cvPath, kind: 'download' },
@@ -147,7 +148,7 @@ const CHAPTERS: Chapter[] = [
         id: 'featured',
         title: 'Featured Builds',
         icon: Hammer,
-        summary: 'Three systems I designed and shipped, each built so you can check its working.',
+        summary: 'Four systems I designed and shipped, each built so you can check its working.',
         tags: [...new Set(profile.projects.flatMap((p) => p.tech))].slice(0, 8),
         items: profile.projects.map((p) => ({
           heading: p.title,
@@ -155,7 +156,7 @@ const CHAPTERS: Chapter[] = [
           text: p.tagline,
           bullets: p.highlights,
         })),
-        actions: github ? [{ label: 'GitHub', href: github.href, kind: 'external' }] : [],
+        actions: profile.projects.flatMap((p) => p.links.map((l) => ({ label: p.title, href: l.href, kind: 'external' as const }))),
       },
       {
         id: 'ai-systems',
@@ -167,7 +168,6 @@ const CHAPTERS: Chapter[] = [
           ...profile.projects
             .filter((p) => p.visual !== 'map')
             .map((p) => ({ heading: p.title, meta: p.tech.join(' · '), text: p.description })),
-          ...roles.filter((e) => e.kind === 'hackathon').map(toItem),
         ],
         actions: [],
       },
@@ -180,7 +180,10 @@ const CHAPTERS: Chapter[] = [
         items: profile.projects
           .filter((p) => p.links.length)
           .map((p) => ({ heading: p.title, meta: p.year, text: p.description })),
-        actions: github ? [{ label: 'GitHub profile', href: github.href, kind: 'external' }] : [],
+        actions: [
+          ...profile.projects.flatMap((p) => p.links.map((l) => ({ label: p.title, href: l.href, kind: 'external' as const }))),
+          ...(github ? [{ label: 'GitHub profile', href: github.href, kind: 'external' as const }] : []),
+        ],
       },
     ],
   },
@@ -192,11 +195,11 @@ const CHAPTERS: Chapter[] = [
     nodes: [
       {
         id: 'roles',
-        title: 'Engineering Roles',
+        title: 'Experience & Leadership',
         icon: Briefcase,
         summary: roles[0]?.summary ?? '',
         tags: roles.map((e) => e.period),
-        items: roles.map(toItem),
+        items: [...roles, ...leadership].map(toItem),
         actions: [],
       },
       {
