@@ -419,6 +419,7 @@ export function LabyrinthNav() {
   const turn = reduced ? 'none' : `transform ${TURN_MS}ms ${TURN_EASE}`
   const { R, cx, cy, wide } = layout
   const nodeSize = wide ? 44 : 40
+  const lizard = useLizardTraversal(step, reduced, turn, R)
   // Mobile sheet stops just below the lowest active label (≈ cy − 0.2R + label height + gap); HUD takes ~70px.
   const sheetMax = Math.max(200, h - 70 - (cy - 0.2 * R + 48))
 
@@ -495,38 +496,12 @@ export function LabyrinthNav() {
             </filter>
           </defs>
 
-          {/* Rim and clock ticks */}
-          <circle r="99.5" fill="none" stroke={GOLD} strokeOpacity="0.35" strokeWidth="0.4" />
-          {Array.from({ length: 60 }, (_, k) => {
-            const major = k % 5 === 0
-            const a = polar(k * 6, major ? 93.5 : 96)
-            const b = polar(k * 6, 99)
-            return (
-              <line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={GOLD} strokeOpacity={major ? 0.45 : 0.18} strokeWidth={major ? 0.5 : 0.25} />
-            )
-          })}
-
-          {/* Concentric dashed rings */}
-          {[90, 70, 52].map((r) => (
-            <circle key={r} r={r} fill="none" stroke={SLATE} strokeOpacity="0.28" strokeWidth="0.25" strokeDasharray="1.2 1.8" />
-          ))}
-
-          {/* Gear: teeth ring, spokes, hub */}
-          <circle r="34" fill="none" stroke={GOLD} strokeOpacity="0.18" strokeWidth="0.5" />
-          {Array.from({ length: 40 }, (_, k) => {
-            const a = polar(k * 9, 34)
-            const b = polar(k * 9, 37.5)
-            return <line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={GOLD} strokeOpacity="0.16" strokeWidth="1.6" />
-          })}
+          {/* Layer 1: base dial */}
           {Array.from({ length: 12 }, (_, k) => {
             const a = polar(k * 30 + 15, 9)
             const b = polar(k * 30 + 15, 34)
             return <line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={SLATE} strokeOpacity="0.2" strokeWidth="0.35" />
           })}
-          <circle r="9" fill="#120d20" stroke={GOLD} strokeOpacity="0.4" strokeWidth="0.5" />
-          <g className="animate-[spin_90s_linear_infinite]">
-            <circle r="5.5" fill="none" stroke={GOLD} strokeOpacity="0.35" strokeWidth="0.35" strokeDasharray="0.9 0.9" />
-          </g>
 
           {/* Quadrant dividers */}
           {[0, 90, 180, 270].map((deg) => {
@@ -557,6 +532,46 @@ export function LabyrinthNav() {
               </text>
             )
           })}
+        </svg>
+
+        {/* Layer 2: lizard beneath the brass */}
+        {lizard.under}
+
+        {/* Layer 3: clockwork rings and hub (occlude the under-layer lizard) */}
+        <svg viewBox="-100 -100 200 200" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+          {/* Opaque backing bands: what the brass physically hides when the lizard dives under. */}
+          <g fill="none" stroke="#0b0914" strokeOpacity="0.82">
+            <circle r="96.5" strokeWidth="6.5" />
+            {[90, 70, 52].map((r) => <circle key={r} r={r} strokeWidth="2.6" />)}
+            <circle r="35.75" strokeWidth="3.5" />
+          </g>
+
+          {/* Rim and clock ticks */}
+          <circle r="99.5" fill="none" stroke={GOLD} strokeOpacity="0.35" strokeWidth="0.4" />
+          {Array.from({ length: 60 }, (_, k) => {
+            const major = k % 5 === 0
+            const a = polar(k * 6, major ? 93.5 : 96)
+            const b = polar(k * 6, 99)
+            return (
+              <line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={GOLD} strokeOpacity={major ? 0.45 : 0.18} strokeWidth={major ? 0.5 : 0.25} />
+            )
+          })}
+
+          {/* Concentric dashed rings */}
+          {[90, 70, 52].map((r) => (
+            <circle key={r} r={r} fill="none" stroke={SLATE} strokeOpacity="0.28" strokeWidth="0.25" strokeDasharray="1.2 1.8" />
+          ))}
+
+          <circle r="34" fill="none" stroke={GOLD} strokeOpacity="0.18" strokeWidth="0.5" />
+          {Array.from({ length: 40 }, (_, k) => {
+            const a = polar(k * 9, 34)
+            const b = polar(k * 9, 37.5)
+            return <line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={GOLD} strokeOpacity="0.16" strokeWidth="1.6" />
+          })}
+          <circle r="9" fill="#120d20" stroke={GOLD} strokeOpacity="0.4" strokeWidth="0.5" />
+          <g className="animate-[spin_90s_linear_infinite]">
+            <circle r="5.5" fill="none" stroke={GOLD} strokeOpacity="0.35" strokeWidth="0.35" strokeDasharray="0.9 0.9" />
+          </g>
 
           {/* Paths between circumference-adjacent nodes */}
           {SEGMENTS.map(({ from, to }) => {
@@ -580,7 +595,10 @@ export function LabyrinthNav() {
           })}
         </svg>
 
-        {/* Nodes: positioned in the rotating frame, contents counter-rotated to stay level. */}
+        {/* Layer 4: lizard on the clock face */}
+        {lizard.over}
+
+        {/* Layer 5 — Nodes: positioned in the rotating frame, contents counter-rotated to stay level. */}
         {PLACED.map((p) => {
           const pos = polar(p.angle, p.r)
           const isActive = p.q === active
