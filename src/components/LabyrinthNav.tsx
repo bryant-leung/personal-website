@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type WheelEvent } from 'react'
+import { createRef, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type WheelEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Award,
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { profile, type ExperienceEntry } from '../data/profile'
 import { useReducedMotion } from '../hooks/useReducedMotion'
-import { bodyPath, eyePoints, legsPath, polarPt } from './lizardGeometry'
+import { polarPt } from './lizardGeometry'
 import { TwinLizardSeal } from './TwinLizardSeal'
 
 /* ── Motion constants: wheel and label counter-rotation must share these exactly. ── */
@@ -646,11 +646,6 @@ export function LabyrinthNav() {
         })}
       </div>
 
-      {/* Non-rotating overlay so the runner travels in screen space while the wheel turns beneath it. */}
-      <div className="pointer-events-none absolute" style={{ left: cx - R, top: cy - R, width: 2 * R, height: 2 * R }}>
-        <LizardRunner step={step} reduced={reduced} />
-      </div>
-
       {/* Stage title, fixed inside the active quadrant's interior. */}
       <div
         className="pointer-events-none absolute"
@@ -913,107 +908,382 @@ function CrestEmblem() {
   )
 }
 
-/* ── Stage-transition lizard runner: slithers along the rim, escorting the arriving stage to 1:30. ── */
-const RUN_MS = 500
-const RUN_R = 99.5
-const RUN_END = 45
-const RUN_LEN = 24
-const DEG_PER_UNIT = 180 / (Math.PI * RUN_R)
+/* ── Persistent gecko: a 20-point spine laid along a curve, split segment-by-segment over/under the brass. ── */
+/** Waypoint in screen space (active quadrant at 12→3): angle (deg clockwise from 12), radius, depth (1 over, 0 under). */
+type Waypoint = [number, number, number]
+type DPt = { x: number; y: number; d: number }
+type P = { x: number; y: number }
 
-function LizardRunner({ step, reduced }: { step: number; reduced: boolean }) {
-  const gradId = useId()
-  const group = useRef<SVGGElement>(null)
-  const body = useRef<SVGPathElement>(null)
-  const legs = useRef<SVGPathElement>(null)
-  const legsInk = useRef<SVGPathElement>(null)
-  const eyes = useRef<SVGGElement>(null)
-  const trail = useRef<SVGPathElement>(null)
-  const grad = useRef<SVGLinearGradientElement>(null)
-  const pulse = useRef<SVGCircleElement>(null)
-  const run = useRef({ last: step, head: RUN_END, running: false, raf: 0 })
+const LIZ_SEG = 20
+const LIZ_PX = 200
+const UNDER_INSET = 0.985
+const UNDER_WIDTH = 0.9
+const UNDER_OPACITY = 0.55
+const SPARK_MS = 280
+const RUN_MS = 1100
+const CLAW_MS = 300
+const SWING = (36 * Math.PI) / 180
+/** Resting sprawl per leg (rad, + = forward): front braced forward, hind tucked back, slightly asymmetric. */
+const REST_ANG = [0.42, 0.26, -0.3, -0.18]
+const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2) // power2.inOut
+const smooth = (t: number) => {
+  const c = Math.min(1, Math.max(0, t))
+  return c * c * (3 - 2 * c)
+}
+const HIP_U = 95 / 200
 
-  useEffect(() => {
-    const st = run.current
-    const d = step - st.last
-    st.last = step
-    if (!d || reduced) return
-    const from = Math.max(RUN_END - 270, Math.min(RUN_END + 270, (st.running ? st.head : RUN_END) - 90 * d))
-    const dir = Math.sign(RUN_END - from)
-    const start = performance.now()
-    cancelAnimationFrame(st.raf)
-    st.running = true
+/** Waypoints along an arc; `wave` adds a sinusoidal radial S-curve. */
+function arc(a0: number, a1: number, r0: number, r1: number, d: number | ((t: number) => number), wave = 0, n = 10): Waypoint[] {
+  return Array.from({ length: n + 1 }, (_, k) => {
+    const t = k / n
+    return [a0 + (a1 - a0) * t, r0 + (r1 - r0) * t + wave * Math.sin(t * Math.PI * 2), typeof d === 'number' ? d : d(t)]
+  })
+}
 
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / RUN_MS)
-      const p = 1 - (1 - t) ** 3 // power3.out
-      const head = from + (RUN_END - from) * p
-      st.head = head
-      const spine = Array.from({ length: 22 }, (_, k) => {
-        const u = k / 21
-        const lateral = 2.2 * Math.sin(p * Math.PI * 5 - u * Math.PI * 2) * (0.25 + u)
-        return polarPt(head - dir * u * RUN_LEN * DEG_PER_UNIT, RUN_R + lateral)
-      })
-      body.current?.setAttribute('d', bodyPath(spine, 2.6))
-      const ld = legsPath(spine, 2.6, 3.6, false)
-      legs.current?.setAttribute('d', ld)
-      legsInk.current?.setAttribute('d', ld)
-      eyePoints(spine, 2.6).forEach((e, i) => {
-        const c = eyes.current?.children[i]
-        c?.setAttribute('cx', e.x.toFixed(2))
-        c?.setAttribute('cy', e.y.toFixed(2))
-      })
-      group.current?.setAttribute('opacity', (t < 0.15 ? t / 0.15 : t > 0.85 ? (1 - t) / 0.15 : 1).toFixed(3))
+/** Indexed by active quadrant; the final ~60 units of each path are the curled resting pose (head last). */
+const STAGE_POSES: { pts: Waypoint[] }[] = [
+  // I: under the hub band → curls along the upper-left inner dial between hub and dashed track.
+  { pts: [[-150, 20, 1], [-125, 30, 0], [-110, 40, 1], ...arc(-100, -15, 46, 43, 1, 2)] },
+  // II: S-curve along the lower-right inner dial, head angled up toward the active nodes.
+  { pts: [[175, 30, 1], [150, 36, 0], [135, 42, 1], ...arc(125, 84, 44, 61, 1, 4)] },
+  // III: tail curls in across the tick ring (under) → coils along the upper-right gold bezel (over).
+  { pts: [[55, 60, 1], [72, 80, 1], [78, 89, 0], ...arc(74, 20, 95, 102.5, (t) => (t < 0.25 ? 0 : 1), 0, 12)] },
+  // IV: tail trails beneath the gold bezel → body wraps along the lower-right outer perimeter.
+  { pts: [[140, 70, 1], [134, 86, 1], ...arc(128, 90, 96, 103.5, (t) => (t < 0.35 ? 0 : 1), 0, 12)] },
+]
 
-      // Tapered crimson → gold ribbon from the start angle to the tail tip.
-      const tailAng = head - dir * RUN_LEN * DEG_PER_UNIT
-      if (dir * (tailAng - from) > 0.5) {
-        const pts = Array.from({ length: 17 }, (_, k) => k / 16)
-        const side = (sgn: number) => pts.map((u) => polarPt(from + (tailAng - from) * u, RUN_R + sgn * 1.4 * u))
-        const outer = side(1).map((q) => `${q.x.toFixed(2)} ${q.y.toFixed(2)}`)
-        const inner = side(-1).reverse().map((q) => `${q.x.toFixed(2)} ${q.y.toFixed(2)}`)
-        trail.current?.setAttribute('d', `M ${outer.join(' L ')} L ${inner.join(' L ')} Z`)
-        const a = polarPt(from, RUN_R)
-        const b = polarPt(tailAng, RUN_R)
-        grad.current?.setAttribute('x1', a.x.toFixed(2))
-        grad.current?.setAttribute('y1', a.y.toFixed(2))
-        grad.current?.setAttribute('x2', b.x.toFixed(2))
-        grad.current?.setAttribute('y2', b.y.toFixed(2))
-      } else trail.current?.setAttribute('d', '')
-      trail.current?.setAttribute('opacity', (t < 0.7 ? 0.9 : (0.9 * (1 - t)) / 0.3).toFixed(3))
 
-      const s = t > 0.85 ? (t - 0.85) / 0.15 : 0
-      pulse.current?.setAttribute('r', (2 + 8 * s).toFixed(2))
-      pulse.current?.setAttribute('opacity', s > 0 ? (0.8 * (1 - s)).toFixed(3) : '0')
-
-      if (t < 1) st.raf = requestAnimationFrame(tick)
-      else st.running = false
+/** Catmull-Rom through the waypoints, depth interpolated as a sharp step around each crossing. */
+function samplePath(wps: Waypoint[]): DPt[] {
+  const p = wps.map(([a, r, d]) => ({ ...polarPt(a, r), d }))
+  const out: DPt[] = []
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[Math.max(0, i - 1)]
+    const p1 = p[i]
+    const p2 = p[i + 1]
+    const p3 = p[Math.min(p.length - 1, i + 2)]
+    for (let k = 0; k < 8; k++) {
+      const t = k / 8
+      const t2 = t * t
+      const t3 = t2 * t
+      const cr = (a: number, b: number, c: number, e: number) =>
+        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - e) * t2 + (-a + 3 * b - 3 * c + e) * t3)
+      const s = Math.min(1, Math.max(0, (t - 0.35) / 0.3))
+      out.push({ x: cr(p0.x, p1.x, p2.x, p3.x), y: cr(p0.y, p1.y, p2.y, p3.y), d: p1.d + (p2.d - p1.d) * s * s * (3 - 2 * s) })
     }
-    st.raf = requestAnimationFrame(tick)
-  }, [step, reduced])
+  }
+  const last = p[p.length - 1]
+  out.push({ x: last.x, y: last.y, d: last.d })
+  return out
+}
 
-  useEffect(() => () => cancelAnimationFrame(run.current.raf), [])
+/** Polyline with cumulative arc length; `at(s)` interpolates, extrapolating before the start. */
+function track(pts: DPt[]) {
+  const cum = [0]
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y))
+  const total = cum[cum.length - 1]
+  const at = (s: number): DPt => {
+    if (s <= 0) {
+      const [a, b] = pts
+      const l = cum[1] || 1
+      return { x: a.x + ((a.x - b.x) / l) * -s, y: a.y + ((a.y - b.y) / l) * -s, d: a.d }
+    }
+    if (s >= total) return pts[pts.length - 1]
+    let i = 1
+    while (cum[i] < s) i++
+    const u = (s - cum[i - 1]) / (cum[i] - cum[i - 1] || 1)
+    const a = pts[i - 1]
+    const b = pts[i]
+    return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, d: a.d + (b.d - a.d) * u }
+  }
+  return { at, total }
+}
 
-  const endPt = polarPt(RUN_END, RUN_R)
-  return (
-    <svg viewBox="-100 -100 200 200" className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
-      <defs>
-        <linearGradient id={gradId} ref={grad} gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#e11d48" stopOpacity="0" />
-          <stop offset="0.4" stopColor="#e11d48" stopOpacity="0.7" />
-          <stop offset="1" stopColor={GOLD} />
-        </linearGradient>
-      </defs>
-      <path ref={trail} fill={`url(#${gradId})`} opacity="0" style={{ filter: 'drop-shadow(0 0 2px #e11d48)' }} />
-      <g ref={group} opacity="0">
-        <path ref={legs} fill="none" stroke={GOLD} strokeWidth="1.3" strokeLinecap="round" />
-        <path ref={legsInk} fill="none" stroke="#050507" strokeWidth="0.6" strokeLinecap="round" />
-        <path ref={body} fill="#050507" stroke={GOLD} strokeWidth="0.45" strokeLinejoin="round" />
-        <g ref={eyes} fill="#e11d48" style={{ filter: 'drop-shadow(0 0 1.2px #e11d48)' }}>
-          <circle r="0.42" />
-          <circle r="0.42" />
-        </g>
-      </g>
-      <circle ref={pulse} cx={endPt.x} cy={endPt.y} r="2" fill="none" stroke={GOLD} strokeWidth="0.5" opacity="0" />
-    </svg>
+const perchTrack = (q: number) => track(samplePath(STAGE_POSES[q].pts))
+
+/** Gecko half-width (× scale), u = 0 snout → 1 tail tip: triangular head, slim neck, sinuous torso, whip tail. */
+function geckoWidth(u: number) {
+  if (u < 0.075) return 0.45 + (u / 0.075) * 0.55
+  if (u < 0.12) return 1 - ((u - 0.075) / 0.045) * 0.55
+  if (u < HIP_U) return 0.45 + 0.28 * Math.sin(((u - 0.12) / (HIP_U - 0.12)) * Math.PI)
+  return 0.45 * (1 - (u - HIP_U) / (1 - HIP_U)) ** 1.3 + 0.025
+}
+
+const f2 = (n: number) => n.toFixed(2)
+
+/** Unit tangent (towards the head) and left normal at spine index k. */
+function spineFrame(sp: P[], k: number) {
+  const a = sp[Math.max(0, k - 1)]
+  const b = sp[Math.min(sp.length - 1, k + 1)]
+  const len = Math.hypot(a.x - b.x, a.y - b.y) || 1
+  const t = { x: (a.x - b.x) / len, y: (a.y - b.y) / len }
+  return { t, n: { x: -t.y, y: t.x } }
+}
+
+/** Closed outline over spine indices [a, b]; snout cap when the run starts at the head. */
+function runOutline(sp: P[], a: number, b: number, w: number) {
+  const left: string[] = []
+  const right: string[] = []
+  for (let k = a; k <= b; k++) {
+    const { n } = spineFrame(sp, k)
+    const hw = geckoWidth(k / (sp.length - 1)) * w
+    left.push(`${f2(sp[k].x + n.x * hw)} ${f2(sp[k].y + n.y * hw)}`)
+    right.unshift(`${f2(sp[k].x - n.x * hw)} ${f2(sp[k].y - n.y * hw)}`)
+  }
+  let cap = ''
+  if (a === 0) {
+    const { t } = spineFrame(sp, 0)
+    cap = `${f2(sp[0].x + t.x * w * 1.1)} ${f2(sp[0].y + t.y * w * 1.1)} L `
+  }
+  return `M ${cap}${left.join(' L ')} L ${right.join(' L ')} Z`
+}
+
+/** One bent leg: angled upper limb → elbow/knee → forearm → three splayed toes; `ang` sweeps it about the hip (+ = forward). */
+function legPath(sp: P[], u: number, side: 1 | -1, front: boolean, w: number, len: number, ang: number) {
+  const k = Math.round(u * (sp.length - 1))
+  const { t, n } = spineFrame(sp, k)
+  const dir = front ? 1 : -1
+  const hw = geckoWidth(u) * w * 0.85
+  const hip = { x: sp[k].x + n.x * side * hw, y: sp[k].y + n.y * side * hw }
+  const c = Math.cos(ang)
+  const sn = Math.sin(ang)
+  const bend = 1 - 0.3 * Math.max(0, ang / SWING) // elbow/knee folds inward on the reach
+  // Local (forward, outward) offset → rotated by ang → world.
+  const at = (o: P, a: number, b: number) => {
+    const f = a * c + b * sn
+    const s = b * c - a * sn
+    return { x: o.x + t.x * f + n.x * side * s, y: o.y + t.y * f + n.y * side * s }
+  }
+  const knee = at(hip, -len * 0.35 * dir, len * 0.6 * bend)
+  const foot = at(hip, -len * 0.35 * dir + len * 0.5 * dir, len * 0.6 * bend + len * 0.2)
+  let d = `M ${f2(hip.x)} ${f2(hip.y)} L ${f2(knee.x)} ${f2(knee.y)} L ${f2(foot.x)} ${f2(foot.y)}`
+  const base = Math.atan2(foot.y - knee.y, foot.x - knee.x)
+  for (const off of [-0.75, 0, 0.75]) {
+    const a = base + off
+    d += ` M ${f2(foot.x)} ${f2(foot.y)} l ${f2(Math.cos(a) * len * 0.26)} ${f2(Math.sin(a) * len * 0.26)}`
+  }
+  return { d, foot }
+}
+
+/** [u, side (1 = left), front, diagonal pair (1 = FL+HR, -1 = FR+HL)] */
+const LEGS: [number, 1 | -1, boolean, 1 | -1][] = [
+  [0.15, 1, true, 1],
+  [0.15, -1, true, -1],
+  [0.43, 1, false, -1],
+  [0.43, -1, false, 1],
+]
+
+function useLizardTraversal(step: number, reduced: boolean, turn: string, R: number) {
+  const [L] = useState(() => {
+    const mk = () => ({ g: createRef<SVGGElement>(), body: createRef<SVGPathElement>(), legs: createRef<SVGPathElement>(), ink: createRef<SVGPathElement>(), eyes: createRef<SVGGElement>() })
+    return { under: mk(), over: mk() }
+  })
+  const spark = useRef<SVGGElement>(null)
+  const claws = useRef<SVGGElement>(null)
+  // ~200px snout to tail tip in wheel units (100 units = R px), capped so it fits small dials.
+  const len = Math.min(60, Math.max(28, (LIZ_PX * 100) / Math.max(1, R)))
+  const lenRef = useRef(len)
+  useEffect(() => {
+    lenRef.current = len
+  }, [len])
+  const st = useRef({
+    q: mod4(step),
+    tr: perchTrack(mod4(step)),
+    start: 0,
+    ms: 0,
+    head: 0,
+    from: 0,
+    spine: [] as DPt[],
+    lastD: 1,
+    spark: { x: 0, y: 0, t0: -1e9 },
+    dist: 0,
+    lastHead: 0,
+    rest: 1,
+    plant: 0,
+    claws: Array.from({ length: 4 }, () => ({ x: 0, y: 0, t0: -1e9 })),
+    clawI: 0,
+    raf: 0,
+  })
+
+  // Draw one frame; `head` is the arc-length position of the snout, `idle` blends in the tail curl.
+  const draw = useCallback(
+    (now: number, idle: number) => {
+      const s = st.current
+      const len = lenRef.current
+      // Gait is driven by arc distance travelled, so feet never skate through the ease-in/out.
+      s.dist += Math.abs(s.head - s.lastHead)
+      s.lastHead = s.head
+      const phase = (s.dist / (len * 0.32)) * Math.PI * 2
+      const run = 1 - s.rest
+      const spine = Array.from({ length: LIZ_SEG }, (_, k) => {
+        const u = k / (LIZ_SEG - 1)
+        const p = s.tr.at(s.head - u * len)
+        if (!idle && !run) return p
+        const a = s.tr.at(s.head - u * len + 0.5)
+        const dx = a.x - p.x
+        const dy = a.y - p.y
+        const l = Math.hypot(dx, dy) || 1
+        const tail = Math.max(0, u - 0.35) / 0.65
+        const curl = idle * len * 0.07 * tail * tail * Math.sin(now / 650 - u * 6)
+        const sway = run * len * 0.025 * Math.sin(phase - u * Math.PI * 1.5) * Math.min(1, u * 4) // hip S-wave synced to footfalls
+        const w = curl + sway
+        return { x: p.x - (dy / l) * w, y: p.y + (dx / l) * w, d: p.d }
+      })
+      s.spine = spine
+      const headD = spine[1].d
+      if ((s.lastD - 0.5) * (headD - 0.5) < 0) s.spark = { x: spine[1].x, y: spine[1].y, t0: now }
+      s.lastD = headD
+
+      const over = spine.map((p) => p.d >= 0.5)
+      const angs = LEGS.map(([, , , pair], i) => run * SWING * pair * Math.sin(phase) + s.rest * REST_ANG[i])
+      // Footfall at each swing extreme: the reaching pair plants; claw glints where it lands on the brass.
+      const plant = run > 0.05 ? Math.floor((phase - Math.PI / 2) / Math.PI) : s.plant
+      const planting = plant !== s.plant ? (plant % 2 === 0 ? 1 : -1) : 0
+      s.plant = plant
+      const eyePulse = 0.7 + 0.3 * Math.sin(now / 900)
+      for (const [layer, isOver] of [
+        [L.over, true],
+        [L.under, false],
+      ] as const) {
+        const sp = isOver ? spine : spine.map((p) => ({ x: p.x * UNDER_INSET, y: p.y * UNDER_INSET }))
+        const w = len * 0.05 * (isOver ? 1 : UNDER_WIDTH)
+        // Contiguous runs on this layer, each extended one point so the seam overlaps the other layer.
+        const runs: string[] = []
+        for (let k = 0; k < LIZ_SEG; k++) {
+          if (over[k] !== isOver) continue
+          const a = Math.max(0, k - (k > 0 ? 1 : 0))
+          let b = k
+          while (b + 1 < LIZ_SEG && over[b + 1] === isOver) b++
+          runs.push(runOutline(sp, a, Math.min(LIZ_SEG - 1, b + 1), w))
+          k = b
+        }
+        layer.body.current?.setAttribute('d', runs.join(' '))
+        const legs = LEGS.map((leg, i) => [leg, i] as const)
+          .filter(([[u]]) => over[Math.round(u * (LIZ_SEG - 1))] === isOver)
+          .map(([[u, side, front, pair], i]) => {
+            const { d, foot } = legPath(sp, u, side, front, w, len * 0.11, angs[i])
+            if (isOver && planting === pair) {
+              s.claws[s.clawI] = { x: foot.x, y: foot.y, t0: now }
+              s.clawI = (s.clawI + 1) % s.claws.length
+            }
+            return d
+          })
+          .join(' ')
+        layer.legs.current?.setAttribute('d', legs)
+        layer.ink.current?.setAttribute('d', legs)
+        const { n } = spineFrame(sp, 1)
+        const ew = geckoWidth(0.05) * w * 0.6
+        ;[1, -1].forEach((side, i) => {
+          const c = layer.eyes.current?.children[i]
+          c?.setAttribute('cx', f2(sp[1].x + n.x * ew * side))
+          c?.setAttribute('cy', f2(sp[1].y + n.y * ew * side))
+          c?.setAttribute('r', f2(w * 0.22))
+        })
+        layer.eyes.current?.setAttribute('opacity', over[1] === isOver ? eyePulse.toFixed(3) : '0')
+        layer.g.current?.setAttribute('opacity', isOver ? '1' : String(UNDER_OPACITY))
+      }
+
+      const k = (now - s.spark.t0) / SPARK_MS
+      const g = spark.current
+      if (g) {
+        g.setAttribute('opacity', k >= 0 && k < 1 ? (1 - k).toFixed(3) : '0')
+        g.setAttribute('transform', `translate(${f2(s.spark.x)} ${f2(s.spark.y)}) scale(${(0.4 + 1.6 * Math.min(1, Math.max(0, k))).toFixed(3)})`)
+      }
+      s.claws.forEach((c, i) => {
+        const e = claws.current?.children[i]
+        const kc = (now - c.t0) / CLAW_MS
+        e?.setAttribute('opacity', kc >= 0 && kc < 1 ? (0.45 * (1 - kc)).toFixed(3) : '0')
+        e?.setAttribute('transform', `translate(${f2(c.x)} ${f2(c.y)}) scale(${(0.6 + 0.6 * Math.min(1, Math.max(0, kc))).toFixed(3)})`)
+      })
+    },
+    [L.over, L.under],
   )
+
+  // Stage change: new track from the current body through the stage's waypoints into its resting pose.
+  useEffect(() => {
+    const s = st.current
+    const q = mod4(step)
+    if (q === s.q) return
+    s.q = q
+    if (reduced) {
+      s.tr = perchTrack(q)
+      s.head = s.lastHead = s.tr.total
+      draw(0, 0)
+      return
+    }
+    // Interrupted mid-run: the new track starts from the live spine, so position and heading carry over.
+    const tail = s.spine.length ? [...s.spine].reverse() : []
+    const path = samplePath(STAGE_POSES[q].pts)
+    s.tr = track([...tail, ...path])
+    s.head = s.from = tail.length ? track(tail).total : 0
+    s.lastHead = s.head
+    s.start = performance.now()
+    s.ms = RUN_MS
+  }, [step, reduced, draw])
+
+  // Resize changes the body length; redraw the reduced-motion perch.
+  useEffect(() => {
+    if (reduced) draw(0, 0)
+  }, [len, reduced, draw])
+
+  // One loop: run when travelling, idle tail curl and eye pulse when perched.
+  useEffect(() => {
+    const s = st.current
+    s.head = s.lastHead = s.tr.total
+    if (reduced) {
+      draw(0, 0)
+      return
+    }
+    const tick = (now: number) => {
+      const t = s.ms ? Math.min(1, (now - s.start) / s.ms) : 1
+      if (t < 1) {
+        const p = easeInOut(t)
+        s.head = s.from + (s.tr.total - s.from) * p
+        s.rest = smooth((p - 0.85) / 0.15) // blend stride into the resting sprawl on arrival
+        draw(now, 0)
+      } else {
+        if (s.ms) {
+          s.head = s.tr.total
+          s.rest = 1
+          s.ms = 0
+          s.start = now
+        }
+        draw(now, Math.min(1, (now - s.start) / 600))
+      }
+      s.raf = requestAnimationFrame(tick)
+    }
+    s.raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(s.raf)
+  }, [reduced, draw])
+
+  const layerStyle: CSSProperties = { transform: 'rotate(calc(-90deg * var(--step)))', transition: turn }
+  const svg = (layer: typeof L.over, over: boolean) => (
+    <div className="pointer-events-none absolute inset-0" style={layerStyle}>
+      <svg viewBox="-100 -100 200 200" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+        <g ref={layer.g} opacity="0" style={over ? { filter: 'drop-shadow(0.8px 1.4px 1px rgba(0,0,0,0.75))' } : undefined}>
+          <path ref={layer.legs} fill="none" stroke={GOLD} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+          <path ref={layer.ink} fill="none" stroke="#050507" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path ref={layer.body} fill="#050507" stroke={GOLD} strokeWidth={over ? 0.45 : 0.35} strokeLinejoin="round" />
+          <g ref={layer.eyes} fill="#e11d48" style={over ? { filter: 'drop-shadow(0 0 1.2px #e11d48)' } : undefined}>
+            <circle r="0.5" />
+            <circle r="0.5" />
+          </g>
+        </g>
+        {over && (
+          <g ref={spark} opacity="0">
+            <path d="M0 -2.4 L0.5 -0.5 L2.4 0 L0.5 0.5 L0 2.4 L-0.5 0.5 L-2.4 0 L-0.5 -0.5 Z" fill={GOLD} />
+            <circle r="0.7" fill="#e11d48" />
+          </g>
+        )}
+        {over && (
+          <g ref={claws}>
+            {[GOLD, '#e11d48', GOLD, '#e11d48'].map((fill, i) => (
+              <path key={i} opacity="0" d="M0 -0.9 L0.2 -0.2 L0.9 0 L0.2 0.2 L0 0.9 L-0.2 0.2 L-0.9 0 L-0.2 -0.2 Z" fill={fill} />
+            ))}
+          </g>
+        )}
+      </svg>
+    </div>
+  )
+  return { under: svg(L.under, false), over: svg(L.over, true) }
 }
