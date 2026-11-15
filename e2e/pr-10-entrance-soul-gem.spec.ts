@@ -13,9 +13,9 @@ test('intro shows both halves of the soul-gem shell', async ({ page }) => {
 
 test('seal with its rune ring sits inside the shell', async ({ page }) => {
   await page.goto('/')
-  const seal = page.getByRole('region', { name: 'Intro' }).locator('svg:has(#rune-ring)')
-  await expect(seal).toHaveCount(1)
-  await expect(seal).toBeVisible()
+  // Seal ids are prefixed per instance since PR #11 (orb-l-rune-ring, orb-r-rune-ring).
+  const seals = page.getByRole('region', { name: 'Intro' }).locator('svg:has([id$="rune-ring"])')
+  await expect(seals.first()).toBeVisible()
 })
 
 test('favicon is the twin-lizard seal', async ({ page, request }) => {
