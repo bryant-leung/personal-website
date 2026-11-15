@@ -62,7 +62,6 @@ export const profile = {
     'I like systems you can check: a GraphRAG pipeline that cites the report behind every answer, a Chrome extension that transcribes anime locally with Whisper and LangGraph, and a hazard map councils can triage from. I speak Cantonese and English natively, Mandarin at a working level, and Japanese at JLPT N2.',
   ],
   email: 'chunholeung0317@gmail.com',
-  cvPath: '/cv.pdf',
   socials: [
     { label: 'GitHub', href: GITHUB, icon: 'github' },
     { label: 'LinkedIn', href: LINKEDIN, icon: 'linkedin' },

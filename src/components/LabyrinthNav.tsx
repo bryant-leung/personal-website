@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Cpu,
-  Download,
   ExternalLink,
   FileText,
   FolderGit2,
@@ -56,7 +55,7 @@ interface DetailItem {
 interface Action {
   label: string
   href: string
-  kind: 'external' | 'download' | 'mail'
+  kind: 'external' | 'mail'
 }
 
 interface LabNode {
@@ -67,7 +66,6 @@ interface LabNode {
   tags: string[]
   items: DetailItem[]
   actions: Action[]
-  embedCv?: boolean
 }
 
 interface Chapter {
@@ -86,10 +84,11 @@ const skill = (category: string) => profile.skills.find((s) => s.category === ca
 const techGroups = profile.skills.filter((s) => s.category !== 'Certifications' && s.category !== 'Spoken')
 const fyp = profile.projects.find((p) => p.id === 'graphrag-disaster')!
 const finalYearModules = education[0]?.bullets.find((b) => b.startsWith('Final year'))
-const cvActions: Action[] = [
-  { label: 'Download CV', href: profile.cvPath, kind: 'download' },
-  { label: 'Open in new tab', href: profile.cvPath, kind: 'external' },
-]
+const cvAction: Action = {
+  label: 'Request my CV',
+  href: `mailto:${profile.email}?subject=${encodeURIComponent('CV request')}`,
+  kind: 'mail',
+}
 const mailAction: Action = { label: profile.email, href: `mailto:${profile.email}`, kind: 'mail' }
 
 const toItem = (e: ExperienceEntry): DetailItem => ({
@@ -113,7 +112,7 @@ const CHAPTERS: Chapter[] = [
         summary: profile.tagline,
         tags: [profile.location, ...skill('Spoken')],
         items: [{ heading: profile.name, meta: profile.role }, ...profile.bio.map((text) => ({ text }))],
-        actions: [cvActions[0], mailAction],
+        actions: [cvAction, mailAction],
       },
       {
         id: 'education',
@@ -229,17 +228,16 @@ const CHAPTERS: Chapter[] = [
     numeral: 'IV',
     title: 'Contact & CV',
     jpTitle: '連絡先',
-    blurb: 'Read the CV, find me online, or write to me.',
+    blurb: 'Request my CV, find me online, or write to me.',
     nodes: [
       {
         id: 'resume',
         title: 'Resume',
         icon: FileText,
-        summary: 'Read my CV here, or download the PDF.',
-        tags: ['PDF'],
+        summary: 'My full CV is available on request. Email me and I will send the latest version.',
+        tags: ['On request'],
         items: [],
-        actions: cvActions,
-        embedCv: true,
+        actions: [cvAction],
       },
       {
         id: 'profiles',
@@ -827,12 +825,6 @@ function DetailPanel({
         </ul>
       )}
 
-      {node.embedCv && (
-        <div className="mt-4 hidden overflow-hidden rounded-xl border border-white/10 bg-white sm:block">
-          <iframe src={profile.cvPath} title="CV (PDF)" className="h-[52vh] w-full" />
-        </div>
-      )}
-
       {node.items.length > 0 && (
         <ul className="mt-4 space-y-4">
           {node.items.map((it, k) => (
@@ -855,12 +847,11 @@ function DetailPanel({
       {node.actions.length > 0 && (
         <div className="mt-5 flex flex-wrap gap-2">
           {node.actions.map((a) => {
-            const Icon = a.kind === 'download' ? Download : a.kind === 'mail' ? Mail : ExternalLink
+            const Icon = a.kind === 'mail' ? Mail : ExternalLink
             return (
               <a
                 key={`${a.kind}-${a.label}`}
                 href={a.href}
-                {...(a.kind === 'download' ? { download: '' } : {})}
                 {...(a.kind === 'external' ? { target: '_blank', rel: 'noreferrer' } : {})}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[#f5b942]/40 bg-[#f5b942]/10 px-3 py-1.5 text-sm text-[#f5b942] transition hover:bg-[#f5b942]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5b942]"
               >
