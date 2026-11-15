@@ -147,7 +147,7 @@ const CHAPTERS: Chapter[] = [
         id: 'featured',
         title: 'Featured Builds',
         icon: Hammer,
-        summary: 'Four systems I designed and shipped, each built so you can check its working.',
+        summary: 'Five systems I designed and shipped, each built so you can check its working.',
         tags: [...new Set(profile.projects.flatMap((p) => p.tech))].slice(0, 8),
         items: profile.projects.map((p) => ({
           heading: p.title,
@@ -165,7 +165,7 @@ const CHAPTERS: Chapter[] = [
         tags: skill('AI / ML'),
         items: [
           ...profile.projects
-            .filter((p) => p.visual !== 'map')
+            .filter((p) => p.visual === 'graph' || p.visual === 'subtitles')
             .map((p) => ({ heading: p.title, meta: p.tech.join(' · '), text: p.description })),
         ],
         actions: [],

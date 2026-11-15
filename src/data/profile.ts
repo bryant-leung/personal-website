@@ -9,7 +9,7 @@ export interface SocialLink {
   icon: 'github' | 'linkedin' | 'mail' | 'globe'
 }
 
-export type ProjectVisual = 'graph' | 'subtitles' | 'map'
+export type ProjectVisual = 'graph' | 'subtitles' | 'map' | 'web'
 
 export interface Project {
   id: string
@@ -130,6 +130,22 @@ export const profile = {
       visual: 'graph',
       links: [{ label: 'GitHub repo', href: REPO('gradient-descent-cbt-hackathon') }],
       year: 'Oct 2026',
+    },
+    {
+      id: 'personal-website',
+      title: 'Personal Website',
+      tagline: 'This site: a scroll-driven entrance and a rotating labyrinth, with a soundtrack synthesised in the browser.',
+      description:
+        'A React and TypeScript single-page site. A 2D scroll-driven entrance of girders, a cathedral arch and drifting feathers leads into a labyrinth stage that turns between four chapters. The orchestral waltz soundtrack is generated live with the Web Audio API.',
+      highlights: [
+        'Scroll-driven entrance animated with GSAP and Framer Motion.',
+        'Orchestral waltz BGM synthesised with the Web Audio API, with hall reverb and a sound toggle.',
+        'A Playwright spec for every pull request, run before each merge.',
+      ],
+      tech: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'GSAP', 'Web Audio API', 'Playwright'],
+      visual: 'web',
+      links: [{ label: 'GitHub repo', href: REPO('personal-website') }],
+      year: '2026',
     },
   ] as Project[],
 
