@@ -1,45 +1,52 @@
 /**
- * Zero-dependency Web Audio engine: an original procedural 3/4 baroque waltz (G harmonic minor) with bass, plucks, choir pad and celesta lead,
- * plus clockwork SFX. No AudioContext exists until the user enables sound, so autoplay policies are respected.
+ * Zero-dependency Web Audio engine. BGM is an original procedural dark orchestral waltz (G harmonic minor, 3/4)
+ * in a synthetic concert hall: string ostinato, cello + timpani downbeats, choir pad and a legato solo lead.
+ * If a local file exists at the configured BGM URL it is crossfaded in and looped instead.
+ * No AudioContext exists until the user enables sound, so autoplay policies are respected.
  */
 
-const BPM = 138
+const BPM = 136
 const BEAT = 60 / BPM
 const EIGHTH = BEAT / 2
 const FADE = 0.4
+const XFADE = 1.5
 const MASTER_GAIN = 0.55
+const REVERB_SECONDS = 2.4
 
-type Chord = { bass: number; notes: number[] }
-// G harmonic minor, 8 bars of 3/4: Gm – Gm/F – Ebmaj7 – Cm7 – D7sus4 – D7 – Ebmaj7 – D7.
+type Chord = { bass: number; notes: number[]; late?: number[] }
+// Gm – Gm/F – Ebmaj7 – D7 – Cm7 – Gm/D – Ebmaj7 – D7sus4→D7 (late = second half of the bar).
 const CHORDS: Chord[] = [
-  { bass: 43, notes: [55, 58, 62] },
-  { bass: 41, notes: [55, 58, 62] },
-  { bass: 39, notes: [51, 55, 58, 62] },
-  { bass: 36, notes: [48, 51, 55, 58] },
-  { bass: 38, notes: [50, 55, 57, 60] },
-  { bass: 38, notes: [50, 54, 57, 60] },
-  { bass: 39, notes: [51, 55, 58, 62] },
-  { bass: 38, notes: [50, 54, 57, 60] },
+  { bass: 31, notes: [55, 58, 62] },
+  { bass: 29, notes: [53, 55, 58, 62] },
+  { bass: 27, notes: [51, 55, 58, 62] },
+  { bass: 38, notes: [54, 57, 60, 62] },
+  { bass: 36, notes: [51, 55, 58, 60] },
+  { bass: 38, notes: [50, 55, 58, 62] },
+  { bass: 27, notes: [51, 55, 58, 62] },
+  { bass: 38, notes: [50, 55, 57, 60], late: [50, 54, 57, 60] },
 ]
-// Original 16-bar celesta lead: [midi, length in eighths], six eighths per bar.
-// Minor-sixth leaps D5→Bb5 (bars 1, 9); suspensions Eb5→D5 (3, 11) and F#5→G5 (16).
+// Ostinato chord-tone index per eighth (1 & 2 & 3 &).
+const OSTINATO = [0, 2, 1, 3, 2, 1]
+
+// Original 16-bar solo theme: [midi, length in eighths], six eighths per bar.
+// Opens with the glide D5→Bb5→A5→G5→F#5→G5.
 const MELODY: [number, number][] = [
   [74, 2], [82, 4],
-  [81, 1], [79, 1], [74, 2], [70, 2],
-  [75, 2], [74, 2], [79, 2],
-  [72, 2], [75, 1], [74, 1], [72, 2],
-  [79, 3], [81, 1], [79, 2],
-  [78, 4], [81, 2],
-  [82, 2], [79, 2], [75, 2],
-  [74, 2], [78, 2], [81, 2],
+  [81, 2], [79, 2], [78, 1], [79, 1],
+  [82, 3], [84, 1], [82, 2],
+  [81, 4], [78, 2],
+  [79, 2], [75, 2], [72, 2],
+  [74, 3], [79, 1], [82, 2],
+  [84, 2], [82, 2], [79, 2],
+  [81, 4], [78, 2],
   [74, 2], [82, 3], [81, 1],
-  [79, 2], [74, 2], [70, 2],
-  [75, 3], [74, 3],
-  [72, 2], [75, 2], [79, 2],
-  [84, 2], [82, 2], [81, 2],
-  [78, 3], [81, 1], [84, 2],
-  [82, 2], [79, 2], [75, 1], [74, 1],
-  [78, 4], [79, 2],
+  [79, 2], [78, 2], [79, 2],
+  [79, 2], [82, 2], [86, 2],
+  [84, 3], [81, 1], [78, 2],
+  [87, 2], [86, 2], [84, 2],
+  [82, 3], [81, 1], [79, 2],
+  [79, 2], [82, 2], [87, 2],
+  [86, 2], [81, 2], [78, 2],
 ]
 const LOOP_STEPS = 96
 const MELODY_AT = new Map<number, [number, number]>()
@@ -50,13 +57,35 @@ const midi = (n: number) => 440 * 2 ** ((n - 69) / 12)
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let musicBus: GainNode | null = null
-let delayIn: GainNode | null = null
+let reverbIn: GainNode | null = null
 let noiseBuf: AudioBuffer | null = null
 let schedTimer: number | null = null
 let suspendTimer: number | null = null
 let nextTime = 0
 let stepIndex = 0
 let enabled = false
+let lead: { osc: AudioScheduledSourceNode[]; freq: AudioParam[]; gain: GainNode } | null = null
+
+let bgmUrl: string | null = '/audio/bgm.mp3'
+let bgmBuffer: AudioBuffer | null | undefined // undefined = not tried yet, null = unavailable
+let bgmSource: AudioBufferSourceNode | null = null
+let bgmGain: GainNode | null = null
+
+/** Point the engine at a different local audio file, or null to always use the synthesizer. */
+export function configureBgm(url: string | null): void {
+  bgmUrl = url
+  bgmBuffer = undefined
+}
+
+function hallImpulse(c: AudioContext): AudioBuffer {
+  const len = Math.floor(c.sampleRate * REVERB_SECONDS)
+  const ir = c.createBuffer(2, len, c.sampleRate)
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch)
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp((-5 * i) / len)
+  }
+  return ir
+}
 
 function build(): AudioContext {
   const c = new AudioContext()
@@ -68,25 +97,17 @@ function build(): AudioContext {
   musicBus.gain.value = 0.8
   musicBus.connect(master)
 
-  // Stereo ping-pong delay tail for the bells.
-  delayIn = c.createGain()
-  delayIn.gain.value = 0.28
-  const dl = c.createDelay(1)
-  const dr = c.createDelay(1)
-  dl.delayTime.value = BEAT * 0.75
-  dr.delayTime.value = BEAT * 0.75
-  const fb = c.createGain()
-  fb.gain.value = 0.38
-  const tone = c.createBiquadFilter()
-  tone.type = 'lowpass'
-  tone.frequency.value = 3200
-  const merger = c.createChannelMerger(2)
-  delayIn.connect(tone).connect(dl)
-  dl.connect(dr)
-  dr.connect(fb).connect(dl)
-  dl.connect(merger, 0, 0)
-  dr.connect(merger, 0, 1)
-  merger.connect(musicBus)
+  // Wet/dry hall: instruments send to reverbIn; the dry signal goes straight to musicBus.
+  reverbIn = c.createGain()
+  const conv = c.createConvolver()
+  conv.buffer = hallImpulse(c)
+  const wet = c.createGain()
+  wet.gain.value = 0.45
+  reverbIn.connect(conv).connect(wet).connect(musicBus)
+
+  bgmGain = c.createGain()
+  bgmGain.gain.value = 0
+  bgmGain.connect(master)
 
   noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate)
   const d = noiseBuf.getChannelData(0)
@@ -94,39 +115,25 @@ function build(): AudioContext {
   return c
 }
 
-function bell(freq: number, t: number, vel: number, len = 1.6) {
-  if (!ctx || !musicBus || !delayIn) return
-  const env = ctx.createGain()
-  env.gain.setValueAtTime(0.0001, t)
-  env.gain.exponentialRampToValueAtTime(vel, t + 0.004)
-  env.gain.exponentialRampToValueAtTime(0.0001, t + len)
-  const body = ctx.createOscillator()
-  body.type = 'sine'
-  body.frequency.value = freq
-  // Inharmonic overtone gives the music-box tine its metallic shimmer.
-  const over = ctx.createOscillator()
-  over.type = 'triangle'
-  over.frequency.value = freq * 2.76
-  const overGain = ctx.createGain()
-  overGain.gain.setValueAtTime(0.18, t)
-  overGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
-  body.connect(env)
-  over.connect(overGain).connect(env)
-  env.connect(musicBus)
-  env.connect(delayIn)
-  body.start(t)
-  over.start(t)
-  body.stop(t + len + 0.1)
-  over.stop(t + len + 0.1)
+/** Output node with dry + reverb send. */
+function channel(dry: number, send: number): GainNode {
+  const c = ctx!
+  const g = c.createGain()
+  const d = c.createGain()
+  d.gain.value = dry
+  const s = c.createGain()
+  s.gain.value = send
+  g.connect(d).connect(musicBus!)
+  g.connect(s).connect(reverbIn!)
+  return g
 }
 
 function voice(type: OscillatorType, freq: number, t: number, peak: number, attack: number, len: number, dest: AudioNode, detune = 0) {
-  if (!ctx) return
-  const o = ctx.createOscillator()
+  const o = ctx!.createOscillator()
   o.type = type
   o.frequency.value = freq
   o.detune.value = detune
-  const g = ctx.createGain()
+  const g = ctx!.createGain()
   g.gain.setValueAtTime(0.0001, t)
   g.gain.exponentialRampToValueAtTime(peak, t + attack)
   g.gain.exponentialRampToValueAtTime(0.0001, t + len)
@@ -135,67 +142,214 @@ function voice(type: OscillatorType, freq: number, t: number, peak: number, atta
   o.stop(t + len + 0.05)
 }
 
-/** Beat 1: warm cello/sub root. */
-function bass(note: number, t: number) {
-  if (!ctx || !musicBus) return
-  const lp = ctx.createBiquadFilter()
+/** Tight staccato string pulse: detuned saw pair, lowpass sweeping 1800→320 Hz. */
+function stringPulse(note: number, t: number, accent: boolean) {
+  const lp = ctx!.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.frequency.value = 420
-  lp.connect(musicBus)
-  voice('sine', midi(note), t, 0.22, 0.02, BEAT * 2.6, lp)
-  voice('sawtooth', midi(note + 12), t, 0.04, 0.03, BEAT * 1.8, lp)
+  lp.Q.value = 2
+  lp.frequency.setValueAtTime(1800, t)
+  lp.frequency.exponentialRampToValueAtTime(320, t + 0.13)
+  lp.connect(channel(1, 0.35))
+  const peak = accent ? 0.075 : 0.05
+  voice('sawtooth', midi(note), t, peak, 0.004, 0.17, lp, -7)
+  voice('sawtooth', midi(note), t, peak, 0.004, 0.17, lp, 7)
 }
 
-/** Beats 2–3: detached harpsichord/music-box chord pluck. */
-function pluck(notes: number[], t: number) {
-  if (!ctx || !musicBus) return
-  const hp = ctx.createBiquadFilter()
-  hp.type = 'highpass'
-  hp.frequency.value = 300
-  hp.connect(musicBus)
-  notes.forEach((n) => voice('triangle', midi(n + 12), t, 0.035, 0.003, 0.22, hp))
+/** Cello sub root plus timpani; `heavy` on every fourth bar. */
+function downbeat(note: number, t: number, heavy: boolean) {
+  const c = ctx!
+  const out = channel(1, 0.5)
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 380
+  lp.connect(out)
+  voice('sine', midi(note), t, 0.3, 0.03, BEAT * 3, lp)
+  voice('sawtooth', midi(note + 12), t, 0.05, 0.05, BEAT * 2.4, lp)
+
+  const k = heavy ? 1.8 : 1
+  const timp = c.createOscillator()
+  timp.type = 'sine'
+  timp.frequency.setValueAtTime(midi(note + 12) * 1.15, t)
+  timp.frequency.exponentialRampToValueAtTime(midi(note + 12), t + 0.12)
+  const tg = c.createGain()
+  tg.gain.setValueAtTime(0.0001, t)
+  tg.gain.exponentialRampToValueAtTime(0.22 * k, t + 0.01)
+  tg.gain.exponentialRampToValueAtTime(0.0001, t + 1.1 * k)
+  timp.connect(tg).connect(out)
+  timp.start(t)
+  timp.stop(t + 1.2 * k)
+
+  const n = c.createBufferSource()
+  n.buffer = noiseBuf
+  const nlp = c.createBiquadFilter()
+  nlp.type = 'lowpass'
+  nlp.frequency.value = 220
+  const ng = c.createGain()
+  ng.gain.setValueAtTime(0.0001, t)
+  ng.gain.exponentialRampToValueAtTime(0.35 * k, t + 0.02)
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.5 * k)
+  n.connect(nlp).connect(ng).connect(out)
+  n.start(t, Math.random() * 0.4, 0.6 * k)
 }
 
-/** Dark choir/string pad: detuned triangle+saw through 720 Hz and 1250 Hz formant bandpasses. */
+/** Dark choir: slow-attack detuned voices through ~700 Hz and ~1220 Hz formants, mostly into the hall. */
 function choir(notes: number[], t: number) {
-  if (!ctx || !musicBus || !delayIn) return
-  const sum = ctx.createGain()
-  sum.gain.value = 1
-  const out = ctx.createGain()
-  out.gain.value = 0.5
-  ;[720, 1250].forEach((f, i) => {
-    const bp = ctx!.createBiquadFilter()
+  const c = ctx!
+  const sum = c.createGain()
+  const out = channel(0.35, 1)
+  ;[700, 1220].forEach((f, i) => {
+    const bp = c.createBiquadFilter()
     bp.type = 'bandpass'
     bp.frequency.value = f
-    bp.Q.value = 6
-    const g = ctx!.createGain()
+    bp.Q.value = 5
+    const g = c.createGain()
     g.gain.value = i ? 0.6 : 1
     sum.connect(bp).connect(g).connect(out)
   })
-  out.connect(musicBus)
-  out.connect(delayIn)
-  const len = BEAT * 3 + 0.9
+  const len = BEAT * 3 + 1
   notes.forEach((n) => {
-    voice('triangle', midi(n), t, 0.05, 0.6, len, sum, -8)
-    voice('sawtooth', midi(n), t, 0.03, 0.6, len, sum, 8)
+    voice('triangle', midi(n + 12), t, 0.06, 0.7, len, sum, -9)
+    voice('sawtooth', midi(n + 12), t, 0.035, 0.7, len, sum, 9)
   })
 }
 
+/** One persistent legato voice so pitch can glide; vibrato at 5.5 Hz. */
+function startLead() {
+  const c = ctx!
+  const gain = c.createGain()
+  gain.gain.value = 0.0001
+  const tone = c.createBiquadFilter()
+  tone.type = 'lowpass'
+  tone.frequency.value = 2600
+  gain.connect(tone).connect(channel(0.8, 0.7))
+  const vib = c.createOscillator()
+  vib.frequency.value = 5.5
+  const vibAmt = c.createGain()
+  vibAmt.gain.value = 16 // cents
+  vib.connect(vibAmt)
+  const tri = c.createOscillator()
+  tri.type = 'triangle'
+  const oct = c.createOscillator()
+  oct.type = 'sine'
+  const octGain = c.createGain()
+  octGain.gain.value = 0.25
+  ;[tri, oct].forEach((o) => {
+    o.frequency.value = midi(74) * (o === oct ? 2 : 1)
+    vibAmt.connect(o.detune)
+  })
+  tri.connect(gain)
+  oct.connect(octGain).connect(gain)
+  // Breath: band-passed noise riding the same envelope.
+  const breath = c.createBufferSource()
+  breath.buffer = noiseBuf
+  breath.loop = true
+  const bbp = c.createBiquadFilter()
+  bbp.type = 'bandpass'
+  bbp.frequency.value = 1800
+  bbp.Q.value = 1.5
+  const bg = c.createGain()
+  bg.gain.value = 0.05
+  breath.connect(bbp).connect(bg).connect(gain)
+  ;[vib, tri, oct, breath].forEach((n) => n.start())
+  lead = { osc: [vib, tri, oct, breath], freq: [tri.frequency, oct.frequency], gain }
+}
+
+function leadNote(note: number, t: number, len: number, prev: number | null) {
+  if (!lead) return
+  const leap = prev === null ? 0 : Math.abs(note - prev)
+  const glide = leap > 2 ? 0.06 : 0.025 // portamento: wider leaps glide longer
+  lead.freq[0].setTargetAtTime(midi(note), t, glide)
+  lead.freq[1].setTargetAtTime(midi(note) * 2, t, glide)
+  lead.gain.gain.setTargetAtTime(0.16, t, 0.05)
+  lead.gain.gain.setTargetAtTime(0.11, t + len * 0.6, 0.15)
+}
+
+function stopLead() {
+  lead?.osc.forEach((o) => o.stop())
+  lead?.gain.disconnect()
+  lead = null
+}
+
+let prevLead: number | null = null
 function schedule() {
   if (!ctx) return
   while (nextTime < ctx.currentTime + 0.25) {
     const step = stepIndex % LOOP_STEPS
     const pos = step % 6
-    const chord = CHORDS[Math.floor(step / 6) % CHORDS.length]
+    const barNo = Math.floor(step / 6)
+    const chord = CHORDS[barNo % CHORDS.length]
+    const tones = chord.late && pos >= 3 ? chord.late : chord.notes
     if (pos === 0) {
-      bass(chord.bass, nextTime)
+      downbeat(chord.bass, nextTime, barNo % 4 === 0)
       choir(chord.notes, nextTime)
-    } else if (pos === 2 || pos === 4) pluck(chord.notes, nextTime)
-    const lead = MELODY_AT.get(step)
-    if (lead) bell(midi(lead[0]), nextTime, 0.13, Math.max(0.6, lead[1] * EIGHTH * 1.6))
+    }
+    if (pos === 3 && chord.late) choir(chord.late, nextTime)
+    stringPulse(tones[OSTINATO[pos] % tones.length], nextTime, pos % 2 === 0)
+    const m = MELODY_AT.get(step)
+    if (m) {
+      leadNote(m[0], nextTime, m[1] * EIGHTH, prevLead)
+      prevLead = m[0]
+    }
     nextTime += EIGHTH
     stepIndex++
   }
+}
+
+function startProcedural() {
+  if (!ctx || schedTimer !== null) return
+  musicBus!.gain.cancelScheduledValues(ctx.currentTime)
+  musicBus!.gain.setValueAtTime(0.8, ctx.currentTime)
+  nextTime = ctx.currentTime + 0.1
+  stepIndex = 0
+  prevLead = null
+  startLead()
+  schedTimer = window.setInterval(schedule, 60)
+  schedule()
+}
+
+function stopProcedural() {
+  if (schedTimer !== null) clearInterval(schedTimer)
+  schedTimer = null
+  stopLead()
+}
+
+async function loadBgm(): Promise<AudioBuffer | null> {
+  if (bgmBuffer !== undefined || !bgmUrl || !ctx) return bgmBuffer ?? null
+  try {
+    const res = await fetch(bgmUrl)
+    // SPA rewrites answer missing files with index.html, so require an audio content type.
+    if (!res.ok || !res.headers.get('content-type')?.startsWith('audio')) throw new Error('no bgm')
+    bgmBuffer = await ctx.decodeAudioData(await res.arrayBuffer())
+  } catch {
+    bgmBuffer = null
+  }
+  return bgmBuffer
+}
+
+function startFile(buf: AudioBuffer, crossfade: boolean) {
+  const c = ctx!
+  const now = c.currentTime
+  bgmSource = c.createBufferSource()
+  bgmSource.buffer = buf
+  bgmSource.loop = true
+  bgmSource.connect(bgmGain!)
+  bgmSource.start()
+  bgmGain!.gain.cancelScheduledValues(now)
+  bgmGain!.gain.setValueAtTime(crossfade ? 0 : 1, now)
+  if (crossfade) {
+    bgmGain!.gain.linearRampToValueAtTime(1, now + XFADE)
+    musicBus!.gain.setValueAtTime(musicBus!.gain.value, now)
+    musicBus!.gain.linearRampToValueAtTime(0, now + XFADE)
+    window.setTimeout(() => {
+      if (bgmSource) stopProcedural()
+    }, XFADE * 1000 + 100)
+  }
+}
+
+function stopFile() {
+  bgmSource?.stop()
+  bgmSource?.disconnect()
+  bgmSource = null
 }
 
 function ramp(to: number) {
@@ -220,19 +374,23 @@ export async function setSoundEnabled(on: boolean): Promise<void> {
     }
     ctx ??= build()
     await ctx.resume()
-    if (schedTimer === null) {
-      nextTime = ctx.currentTime + 0.1
-      stepIndex = 0
-      schedTimer = window.setInterval(schedule, 60)
-      schedule()
+    if (!bgmSource) {
+      if (bgmBuffer) startFile(bgmBuffer, false)
+      else {
+        startProcedural()
+        // Fall forward to the local file if it turns up; otherwise the synthesizer keeps playing.
+        void loadBgm().then((buf) => {
+          if (buf && enabled && !bgmSource) startFile(buf, true)
+        })
+      }
     }
     ramp(MASTER_GAIN)
   } else if (ctx) {
     ramp(0)
     suspendTimer = window.setTimeout(() => {
       suspendTimer = null
-      if (schedTimer !== null) clearInterval(schedTimer)
-      schedTimer = null
+      stopProcedural()
+      stopFile()
       void ctx?.suspend()
     }, FADE * 1000 + 50)
   }
