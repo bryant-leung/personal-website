@@ -23,6 +23,8 @@ export interface Project {
   visual: ProjectVisual
   links: { label: string; href: string }[]
   year: string
+  /** Built at a hackathon rather than as a personal project */
+  hackathon?: boolean
 }
 
 export interface ExperienceEntry {
@@ -130,6 +132,7 @@ export const profile = {
       visual: 'graph',
       links: [{ label: 'GitHub repo', href: REPO('gradient-descent-cbt-hackathon') }],
       year: 'Oct 2026',
+      hackathon: true,
     },
     {
       id: 'personal-website',

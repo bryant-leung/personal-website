@@ -50,6 +50,7 @@ interface DetailItem {
   meta?: string
   text?: string
   bullets?: string[]
+  links?: { label: string; href: string }[]
 }
 
 interface Action {
@@ -77,6 +78,8 @@ interface Chapter {
 }
 
 const github = profile.socials.find((s) => s.icon === 'github')
+const builds = profile.projects.filter((p) => !p.hackathon)
+const hackathons = profile.projects.filter((p) => p.hackathon)
 const education = profile.experience.filter((e) => e.kind === 'education')
 const roles = profile.experience.filter((e) => e.kind === 'work')
 const leadership = profile.experience.filter((e) => e.kind === 'leadership')
@@ -147,27 +150,30 @@ const CHAPTERS: Chapter[] = [
         id: 'featured',
         title: 'Featured Builds',
         icon: Hammer,
-        summary: 'Five systems I designed and shipped, each built so you can check its working.',
-        tags: [...new Set(profile.projects.flatMap((p) => p.tech))].slice(0, 8),
-        items: profile.projects.map((p) => ({
+        summary: 'Four systems I designed and shipped, each built so you can check its working.',
+        tags: [...new Set(builds.flatMap((p) => p.tech))].slice(0, 8),
+        items: builds.map((p) => ({
           heading: p.title,
           meta: p.jpTitle ? `${p.year} · ${p.jpTitle}` : `${p.year}`,
           text: p.tagline,
           bullets: p.highlights,
+          links: p.links,
         })),
-        actions: profile.projects.flatMap((p) => p.links.map((l) => ({ label: p.title, href: l.href, kind: 'external' as const }))),
+        actions: [],
       },
       {
-        id: 'ai-systems',
-        title: 'AI / Systems Work',
+        id: 'hackathons',
+        title: 'Hackathons',
         icon: Cpu,
-        summary: 'Retrieval, speech and risk-scoring pipelines where the model is one checked step, not the whole system.',
-        tags: skill('AI / ML'),
-        items: [
-          ...profile.projects
-            .filter((p) => p.visual === 'graph' || p.visual === 'subtitles')
-            .map((p) => ({ heading: p.title, meta: p.tech.join(' · '), text: p.description })),
-        ],
+        summary: 'Team builds made against the clock.',
+        tags: [...new Set(hackathons.flatMap((p) => p.tech))],
+        items: hackathons.map((p) => ({
+          heading: p.title,
+          meta: p.year,
+          text: p.tagline,
+          bullets: p.highlights,
+          links: p.links,
+        })),
         actions: [],
       },
       {
@@ -178,11 +184,8 @@ const CHAPTERS: Chapter[] = [
         tags: [...new Set(profile.projects.filter((p) => p.links.length).flatMap((p) => p.tech))],
         items: profile.projects
           .filter((p) => p.links.length)
-          .map((p) => ({ heading: p.title, meta: p.year, text: p.description })),
-        actions: [
-          ...profile.projects.flatMap((p) => p.links.map((l) => ({ label: p.title, href: l.href, kind: 'external' as const }))),
-          ...(github ? [{ label: 'GitHub profile', href: github.href, kind: 'external' as const }] : []),
-        ],
+          .map((p) => ({ heading: p.title, meta: p.year, text: p.description, links: p.links })),
+        actions: github ? [{ label: 'GitHub profile', href: github.href, kind: 'external' as const }] : [],
       },
     ],
   },
@@ -838,6 +841,22 @@ function DetailPanel({
                     <li key={b}>{b}</li>
                   ))}
                 </ul>
+              )}
+              {it.links && it.links.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {it.links.map((l) => (
+                    <a
+                      key={l.href}
+                      href={l.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#f5b942]/40 bg-[#f5b942]/10 px-2.5 py-1 text-xs text-[#f5b942] transition hover:bg-[#f5b942]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5b942]"
+                    >
+                      <ExternalLink size={12} aria-hidden="true" />
+                      {l.label}
+                    </a>
+                  ))}
+                </div>
               )}
             </li>
           ))}

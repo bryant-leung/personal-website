@@ -17,13 +17,13 @@ test.beforeEach(async ({ page }) => {
 
 test('featured builds lists the personal website with its repo link', async ({ page }) => {
   const panel = await open(page, 'Projects', 'Featured Builds')
-  await expect(panel).toContainText('Five systems')
+  await expect(panel).toContainText('Four systems')
   await expect(panel).toContainText('Personal Website')
   await expect(panel.locator('a[href="https://github.com/bryant-leung/personal-website"]')).toHaveCount(1)
 })
 
-test('AI / Systems Work excludes the personal website', async ({ page }) => {
-  const panel = await open(page, 'Projects', 'AI / Systems Work')
+test('Hackathons excludes the personal website', async ({ page }) => {
+  const panel = await open(page, 'Projects', 'Hackathons')
   await expect(panel).toContainText('Decode and Detect')
   await expect(panel).not.toContainText('Personal Website')
 })
