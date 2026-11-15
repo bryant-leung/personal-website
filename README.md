@@ -1,99 +1,84 @@
 <div align="center">
 
-<img src="assets/feathers.svg" alt="Bryant Leung, falling feathers" width="100%">
+<img src="assets/readme-banner.svg" alt="Bryant Leung: a clockwork labyrinth portfolio" width="100%">
 
-# Bryant Leung · Portfolio
+![React](https://img.shields.io/badge/React-19-f5b942?logo=react&logoColor=f5b942&labelColor=050507)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-7c3aed?logo=typescript&logoColor=white&labelColor=050507)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-f5b942?logo=tailwindcss&logoColor=f5b942&labelColor=050507)
+![Vite](https://img.shields.io/badge/Vite-8-7c3aed?logo=vite&logoColor=white&labelColor=050507)
+![GSAP + Lenis](https://img.shields.io/badge/GSAP_+_Lenis-scroll-e11d48?logo=greensock&logoColor=white&labelColor=050507)
+![Web Audio API](https://img.shields.io/badge/Web_Audio-API-e11d48?logo=audacity&logoColor=white&labelColor=050507)
 
-**A theatrical, clockwork portfolio site**, staged like a magical-girl labyrinth.
-
-![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white&labelColor=0b0914)
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white&labelColor=0b0914)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?logo=tailwindcss&logoColor=white&labelColor=0b0914)
-![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white&labelColor=0b0914)
+*A theatrical portfolio, staged as a clockwork labyrinth.*
 
 </div>
 
 ---
 
-## What it is
+## The stage
 
-My personal portfolio. It opens with a short 2D anime-style cut-in, then drops you into a navigation wheel inspired by the Walpurgisnacht stage labyrinth: a giant clockwork dial, pivoted off-screen, that turns a quarter at a time to bring each chapter of the site into view.
+### Entrance & smoke reveal · `EntranceSequence`
+A scroll-driven obsidian hero (Lenis smooth scroll + GSAP ScrollTrigger). A Gothic cathedral arch frames a horizon crossed by steel girders, and *daten* feathers drift down through it. At its centre the Dark Orb and the twin *Tokage-san* seal burst into violet-and-crimson smoke to reveal the labyrinth. **ENTER LABYRINTH** skips straight there; **Replay intro** runs it again.
 
-## Highlights
+### Clockwork wheel & gecko · `LabyrinthNav`
+- A brass dial, pivoted off-screen, turns one quadrant at a time: **I** Profile · **II** Projects · **III** Experience & Stack · **IV** Contact & CV.
+- It never unwinds: from IV back to I it keeps turning forward. Labels counter-rotate so they stay level.
+- A four-legged gecko with a curving spine runs across the dial, weaving over and under the brass rings to a perch in each quadrant.
+- Nodes open glass detail cards: a side column on desktop, a bottom sheet on mobile.
+- Navigate with the I–IV selector, Prev/Next, arrow keys or scroll. Every control is a real button, stage changes are announced to screen readers, and `prefers-reduced-motion` is respected.
 
-### 🎬 Entrance sequence
-An ~8-second, nine-shot 2D intro drawn on an HTML canvas, with girders, a cathedral arch and drifting feather particles animated on scroll. It plays once per session; the replay button in the top-right corner runs it again.
+### Baroque soundscape · `soundEngine`
+An optional Web Audio synth with no dependencies. It plays a 3/4 waltz in G harmonic minor (hall reverb, staccato string ostinato, dark choir pad and a solo lead) over clock-escapement ticks. It stays silent until you turn it on.
 
-### ⚙️ Labyrinth navigation (`LabyrinthNav`)
-- **Four stages on one wheel.** Profile, Projects, Experience & Stack, and Contact & CV each take a 90° quadrant of a single 360° dial.
-- **A curved sweep.** The pivot sits low-left, so the active quarter-arc cuts diagonally across the screen. Each forward step turns the wheel +90° clockwise: the next chapter swings in from the top-left as the last one leaves to the bottom-right.
-- **It never unwinds.** Rotation is a running step count, so going from IV back to I keeps turning forward (270° → 360°).
-- **Labels stay level.** Every node counter-rotates with the same 900 ms `cubic-bezier(0.22, 1, 0.36, 1)` timing as the wheel, so text stays horizontal throughout the turn.
-- **Detail cards.** Clicking a node opens a glass card (a right-hand column on desktop, a bottom sheet on mobile) with details, tags and links. Clicking a faded node in a neighbouring stage turns the wheel there.
-- **Several ways to move.** The I–IV stage selector, Prev/Next buttons, arrow keys, and debounced scroll or trackpad gestures all turn the wheel.
-- **Gecko and seal.** A twin-lizard seal sits at the dial's centre, and a gecko traverses the wheel persistently, layered both over and under the clockwork.
-- **Accessible by default.** Nodes and controls are real buttons, stage changes are announced to screen readers, and `prefers-reduced-motion` turns the animations off.
-
-### 🔊 Sound
-Off by default. The sound toggle starts a zero-dependency Web Audio engine: an original procedural 3/4 baroque waltz in G harmonic minor (bass, plucks, choir pad, celesta lead) plus clockwork SFX on wheel turns. No `AudioContext` is created until sound is enabled, so browser autoplay policies are respected.
-
-### 🎨 Palette
+### Palette
 
 | Role | Colour |
 |---|---|
-| Stage backdrop | `#0b0914` obsidian plum |
-| Active paths, unlocked nodes | `#f5b942` tarnished gold |
-| Inactive quadrants | `#8b84b0` muted violet at 45% opacity |
-| Selection | `#e0457b` crimson-magenta |
+| Obsidian backdrop | `#050507` |
+| Antique gold | `#f5b942` |
+| Violet glow | `#7c3aed` |
+| Crimson accent | `#e11d48` |
 
-## Getting started
-
-Requires Node `^20.19` or `>=22.12` (Vite 8).
-
-```bash
-npm install
-npm run dev        # http://localhost:5173
-```
-
-| Script | What it does |
-|---|---|
-| `npm run dev` | Vite dev server with hot reload |
-| `npm run build` | Type-checks (`tsc -b`), then builds to `dist/` |
-| `npm run preview` | Serves the production build locally |
-| `npm run lint` | Runs oxlint |
-
-### Deploying
-Production metadata and favicon live in `index.html` and `public/favicon.svg`. SPA rewrites are included for both Vercel (`vercel.json`) and Netlify (`public/_redirects`).
-
-## Project structure
+## Architecture
 
 ```
 src/
-├── App.tsx                    # Entrance → labyrinth hand-off, replay button
+├── App.tsx                    # Entrance → labyrinth hand-off, replay, sound toggle
 ├── components/
-│   ├── EntranceSequence.tsx   # 2D canvas intro
-│   ├── LabyrinthNav.tsx       # Circular four-stage navigation map, gecko traversal
-│   ├── TwinLizardSeal.tsx     # Centre seal (geometry in lizardGeometry.ts)
-│   └── entranceKey.ts         # Session key for play-once intro
+│   ├── EntranceSequence.tsx   # Scroll-driven hero and smoke reveal
+│   ├── LabyrinthNav.tsx       # Clockwork wheel and gecko runner
+│   ├── TwinLizardSeal.tsx     # Dark Orb + twin Tokage-san seal
+│   ├── lizardGeometry.ts      # Lizard silhouette paths
+│   └── entranceKey.ts         # Play-once session flag
 ├── data/
 │   ├── profile.ts             # All site copy: bio, projects, experience, skills
 │   └── themes.ts              # Per-stage theme tokens
 ├── hooks/                     # useReducedMotion, useMediaQuery
 └── utils/
-    └── soundEngine.ts         # Procedural waltz + clockwork SFX (Web Audio)
+    └── soundEngine.ts         # Procedural waltz + clockwork SFX
 public/
-├── cv.pdf                     # Linked from the Contact & CV stage
-├── favicon.svg
-└── _redirects                 # Netlify SPA rewrite
+├── cv.pdf  ·  favicon.svg  ·  _redirects
 ```
 
-## Editing content
+All copy lives in [`src/data/profile.ts`](src/data/profile.ts). To replace the CV, swap `public/cv.pdf`.
 
-All copy lives in [`src/data/profile.ts`](src/data/profile.ts); components never hard-code it. Edit a project, role or skill there and the labyrinth nodes and detail cards update. To replace the CV, swap `public/cv.pdf`.
+## Local development
+
+Requires Node `^20.19` or `>=22.12`.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # tsc -b, then build to dist/
+npm run preview    # serve the production build
+npm run lint       # oxlint
+```
+
+SPA rewrites are included for Vercel (`vercel.json`) and Netlify (`public/_redirects`).
 
 ## Credits
 
-- The art direction is a fan homage to the witch labyrinths of *Puella Magi Madoka Magica*. Its characters and setting belong to their respective rights holders.
+The art direction is a fan homage to the witch labyrinths of *Puella Magi Madoka Magica*. Its characters and setting belong to their respective rights holders. The music is original.
 
 ---
 
