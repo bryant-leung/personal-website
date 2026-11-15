@@ -1,6 +1,7 @@
 /**
  * Zero-dependency Web Audio engine. BGM is an original procedural dark orchestral waltz (G harmonic minor, 3/4)
- * in a synthetic concert hall: string ostinato, cello + timpani downbeats, choir pad and a legato solo lead.
+ * in a synthetic concert hall: staccato string ostinato, cello + timpani downbeats, formant choir, a bowed solo
+ * violin, and an operatic soprano that enters for the climax (bars 9–16).
  * If a local file exists at the configured BGM URL it is crossfaded in and looped instead.
  * No AudioContext exists until the user enables sound, so autoplay policies are respected.
  */
@@ -11,6 +12,7 @@ const EIGHTH = BEAT / 2
 const FADE = 0.4
 const XFADE = 1.5
 const MASTER_GAIN = 0.55
+const MUSIC_GAIN = 0.72
 const REVERB_SECONDS = 2.4
 
 type Chord = { bass: number; notes: number[]; late?: number[] }
@@ -27,32 +29,58 @@ const CHORDS: Chord[] = [
 ]
 // Ostinato chord-tone index per eighth (1 & 2 & 3 &).
 const OSTINATO = [0, 2, 1, 3, 2, 1]
-
-// Original 16-bar solo theme: [midi, length in eighths], six eighths per bar.
-// Opens with the glide D5→Bb5→A5→G5→F#5→G5.
-const MELODY: [number, number][] = [
-  [74, 2], [82, 4],
-  [81, 2], [79, 2], [78, 1], [79, 1],
-  [82, 3], [84, 1], [82, 2],
-  [81, 4], [78, 2],
-  [79, 2], [75, 2], [72, 2],
-  [74, 3], [79, 1], [82, 2],
-  [84, 2], [82, 2], [79, 2],
-  [81, 4], [78, 2],
-  [74, 2], [82, 3], [81, 1],
-  [79, 2], [78, 2], [79, 2],
-  [79, 2], [82, 2], [86, 2],
-  [84, 3], [81, 1], [78, 2],
-  [87, 2], [86, 2], [84, 2],
-  [82, 3], [81, 1], [79, 2],
-  [79, 2], [82, 2], [87, 2],
-  [86, 2], [81, 2], [78, 2],
-]
 const LOOP_STEPS = 96
-const MELODY_AT = new Map<number, [number, number]>()
-MELODY.reduce((step, ev) => (MELODY_AT.set(step, ev), step + ev[1]), 0)
+const CLIMAX_STEP = 48 // bar 9
+
+// Original 8-bar baroque violin theme: [midi, length in eighths], six eighths per bar.
+// Played as written in bars 1–8, an octave higher with doubling + tremolo in bars 9–16.
+const THEME: [number, number][] = [
+  [67, 2], [70, 1], [74, 1], [79, 2],
+  [77, 3], [74, 1], [70, 2],
+  [79, 4], [75, 2],
+  [78, 2], [81, 2], [74, 2],
+  [75, 3], [74, 1], [72, 2],
+  [70, 2], [74, 2], [79, 2],
+  [82, 3], [79, 1], [75, 2],
+  [74, 3], [69, 1], [66, 2],
+]
+
+type Vowel = 'ah' | 'oh' | 'ee'
+const FORMANTS: Record<Vowel, [number, number, number]> = {
+  ah: [730, 1090, 2440],
+  oh: [570, 840, 2410],
+  ee: [270, 2290, 3010],
+}
+// Original soprano counter-melody for bars 9–16, opening Bb5→A5→G5→F#5→G5: [midi, eighths, vowel].
+const SOPRANO: [number, number, Vowel][] = [
+  [82, 4, 'ah'], [81, 2, 'oh'],
+  [79, 6, 'ah'],
+  [82, 3, 'oh'], [79, 3, 'ee'],
+  [78, 4, 'ah'], [81, 2, 'oh'],
+  [79, 6, 'ah'],
+  [82, 3, 'oh'], [86, 3, 'ah'],
+  [87, 4, 'ah'], [86, 2, 'ee'],
+  [84, 2, 'oh'], [81, 2, 'ah'], [78, 2, 'oh'],
+]
+
+const at = <T extends [number, number, ...unknown[]]>(events: T[], offset: number) => {
+  const map = new Map<number, T>()
+  events.reduce((step, ev) => (map.set(step, ev), step + ev[1]), offset)
+  return map
+}
+const VIOLIN_AT = new Map([...at(THEME, 0)].concat([...at(THEME, CLIMAX_STEP)].map(([s, [n, l]]) => [s, [n + 12, l]])))
+const SOPRANO_AT = at(SOPRANO, CLIMAX_STEP)
 
 const midi = (n: number) => 440 * 2 ** ((n - 69) / 12)
+
+type Violin = {
+  nodes: AudioScheduledSourceNode[]
+  freq: AudioParam[]
+  gain: GainNode
+  vib: GainNode
+  trem: GainNode
+  high: GainNode
+}
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
@@ -64,7 +92,7 @@ let suspendTimer: number | null = null
 let nextTime = 0
 let stepIndex = 0
 let enabled = false
-let lead: { osc: AudioScheduledSourceNode[]; freq: AudioParam[]; gain: GainNode } | null = null
+let violin: Violin | null = null
 
 let bgmUrl: string | null = '/audio/bgm.mp3'
 let bgmBuffer: AudioBuffer | null | undefined // undefined = not tried yet, null = unavailable
@@ -93,9 +121,22 @@ function build(): AudioContext {
   master.gain.value = 0
   master.connect(c.destination)
 
+  // Music-only glue compressor + soft limit, so the full climax never clips; SFX bypass it into master.
+  const comp = c.createDynamicsCompressor()
+  comp.threshold.value = -18
+  comp.knee.value = 12
+  comp.ratio.value = 4
+  comp.attack.value = 0.01
+  comp.release.value = 0.25
+  const limit = c.createDynamicsCompressor()
+  limit.threshold.value = -3
+  limit.knee.value = 0
+  limit.ratio.value = 20
+  limit.attack.value = 0.002
+  limit.release.value = 0.1
   musicBus = c.createGain()
-  musicBus.gain.value = 0.8
-  musicBus.connect(master)
+  musicBus.gain.value = MUSIC_GAIN
+  musicBus.connect(comp).connect(limit).connect(master)
 
   // Wet/dry hall: instruments send to reverbIn; the dry signal goes straight to musicBus.
   reverbIn = c.createGain()
@@ -192,103 +233,208 @@ function downbeat(note: number, t: number, heavy: boolean) {
   n.start(t, Math.random() * 0.4, 0.6 * k)
 }
 
-/** Dark choir: slow-attack detuned voices through ~700 Hz and ~1220 Hz formants, mostly into the hall. */
-function choir(notes: number[], t: number) {
+/** Cadence swell over a D7 bar: rising filtered cymbal wash plus a crescendo timpani roll on D. */
+function cadenceSwell(t: number) {
   const c = ctx!
-  const sum = c.createGain()
-  const out = channel(0.35, 1)
-  ;[700, 1220].forEach((f, i) => {
-    const bp = c.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.frequency.value = f
-    bp.Q.value = 5
-    const g = c.createGain()
-    g.gain.value = i ? 0.6 : 1
-    sum.connect(bp).connect(g).connect(out)
-  })
-  const len = BEAT * 3 + 1
-  notes.forEach((n) => {
-    voice('triangle', midi(n + 12), t, 0.06, 0.7, len, sum, -9)
-    voice('sawtooth', midi(n + 12), t, 0.035, 0.7, len, sum, 9)
-  })
+  const len = BEAT * 3
+  const out = channel(0.6, 0.9)
+  const cym = c.createBufferSource()
+  cym.buffer = noiseBuf
+  cym.loop = true
+  const hp = c.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.setValueAtTime(3000, t)
+  hp.frequency.exponentialRampToValueAtTime(7000, t + len)
+  const cg = c.createGain()
+  cg.gain.setValueAtTime(0.0001, t)
+  cg.gain.exponentialRampToValueAtTime(0.09, t + len)
+  cg.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.6)
+  cym.connect(hp).connect(cg).connect(out)
+  cym.start(t)
+  cym.stop(t + len + 0.7)
+  for (let i = 0; i < 12; i++) {
+    const s = t + (i * len) / 12
+    voice('sine', midi(38), s, 0.03 + i * 0.012, 0.005, 0.18, out)
+  }
 }
 
-/** One persistent legato voice so pitch can glide; vibrato at 5.5 Hz. */
-function startLead() {
+/** Persistent bowed violin: detuned saw pair (+ optional octave doubling) through body resonances, with
+ *  delayed vibrato bloom and an 11 Hz tremolo stage that the arrangement opens in the climax. */
+function createViolinVoice(): Violin {
   const c = ctx!
   const gain = c.createGain()
   gain.gain.value = 0.0001
-  const tone = c.createBiquadFilter()
-  tone.type = 'lowpass'
-  tone.frequency.value = 2600
-  gain.connect(tone).connect(channel(0.8, 0.7))
-  const vib = c.createOscillator()
-  vib.frequency.value = 5.5
-  const vibAmt = c.createGain()
-  vibAmt.gain.value = 16 // cents
-  vib.connect(vibAmt)
-  const tri = c.createOscillator()
-  tri.type = 'triangle'
-  const oct = c.createOscillator()
-  oct.type = 'sine'
-  const octGain = c.createGain()
-  octGain.gain.value = 0.25
-  ;[tri, oct].forEach((o) => {
-    o.frequency.value = midi(74) * (o === oct ? 2 : 1)
-    vibAmt.connect(o.detune)
+  const trem = c.createGain()
+  trem.gain.value = 1
+  const body: [BiquadFilterType, number, number, number][] = [
+    ['highpass', 190, 0.7, 0],
+    ['peaking', 280, 3, 4],
+    ['peaking', 460, 2.5, 3],
+    ['peaking', 2400, 2, 5],
+    ['highshelf', 4200, 0.7, 3],
+    ['lowpass', 8000, 0.7, 0],
+  ]
+  const chain = body.reduce<AudioNode>((prev, [type, f, q, g]) => {
+    const bq = c.createBiquadFilter()
+    bq.type = type
+    bq.frequency.value = f
+    bq.Q.value = q
+    bq.gain.value = g
+    return prev.connect(bq)
+  }, gain)
+  chain.connect(trem).connect(channel(0.75, 0.8))
+
+  const vibLfo = c.createOscillator()
+  vibLfo.frequency.value = 5.8
+  const vib = c.createGain()
+  vib.gain.value = 0
+  vibLfo.connect(vib)
+
+  const tremLfo = c.createOscillator()
+  tremLfo.frequency.value = 11
+  const tremDepth = c.createGain()
+  tremDepth.gain.value = 0
+  tremLfo.connect(tremDepth).connect(trem.gain)
+
+  const high = c.createGain()
+  high.gain.value = 0
+  high.connect(gain)
+  const saws = [-6, 6, -6, 6].map((detune, i) => {
+    const o = c.createOscillator()
+    o.type = 'sawtooth'
+    o.detune.value = detune
+    o.frequency.value = midi(67) * (i < 2 ? 1 : 2)
+    vib.connect(o.detune)
+    o.connect(i < 2 ? gain : high)
+    return o
   })
-  tri.connect(gain)
-  oct.connect(octGain).connect(gain)
-  // Breath: band-passed noise riding the same envelope.
-  const breath = c.createBufferSource()
-  breath.buffer = noiseBuf
-  breath.loop = true
-  const bbp = c.createBiquadFilter()
-  bbp.type = 'bandpass'
-  bbp.frequency.value = 1800
-  bbp.Q.value = 1.5
-  const bg = c.createGain()
-  bg.gain.value = 0.05
-  breath.connect(bbp).connect(bg).connect(gain)
-  ;[vib, tri, oct, breath].forEach((n) => n.start())
-  lead = { osc: [vib, tri, oct, breath], freq: [tri.frequency, oct.frequency], gain }
+  const nodes = [vibLfo, tremLfo, ...saws]
+  nodes.forEach((n) => n.start())
+  return { nodes, freq: saws.map((o) => o.frequency), gain, vib, trem: tremDepth, high }
 }
 
-function leadNote(note: number, t: number, len: number, prev: number | null) {
-  if (!lead) return
+function violinNote(note: number, t: number, len: number, prev: number | null, climax: boolean) {
+  if (!violin) return
   const leap = prev === null ? 0 : Math.abs(note - prev)
-  const glide = leap > 2 ? 0.06 : 0.025 // portamento: wider leaps glide longer
-  lead.freq[0].setTargetAtTime(midi(note), t, glide)
-  lead.freq[1].setTargetAtTime(midi(note) * 2, t, glide)
-  lead.gain.gain.setTargetAtTime(0.16, t, 0.05)
-  lead.gain.gain.setTargetAtTime(0.11, t + len * 0.6, 0.15)
+  const glide = leap > 4 ? 0.045 : 0.01 // portamento only on dramatic leaps
+  violin.freq.forEach((f, i) => f.setTargetAtTime(midi(note) * (i < 2 ? 1 : 2), t, glide))
+  // Bow change: brief dip, then a ~110 ms swell to full, easing back as the stroke travels.
+  const peak = climax ? 0.085 : 0.07
+  const g = violin.gain.gain
+  g.setTargetAtTime(peak * 0.45, t, 0.012)
+  g.setTargetAtTime(peak, t + 0.025, 0.03)
+  g.setTargetAtTime(peak * 0.72, t + Math.max(0.15, len * 0.65), 0.18)
+  // Vibrato blooms ~160 ms after the note starts.
+  violin.vib.gain.setTargetAtTime(0, t, 0.01)
+  violin.vib.gain.setTargetAtTime(climax ? 22 : 16, t + 0.16, 0.08)
 }
 
-function stopLead() {
-  lead?.osc.forEach((o) => o.stop())
-  lead?.gain.disconnect()
-  lead = null
+/** Open or close the climax layers: octave doubling and 11 Hz tremolo. */
+function violinSection(t: number, climax: boolean) {
+  if (!violin) return
+  violin.high.gain.setTargetAtTime(climax ? 0.3 : 0, t, 0.2)
+  violin.trem.gain.setTargetAtTime(climax ? 0.38 : 0, t, 0.2)
 }
 
-let prevLead: number | null = null
+function stopViolin() {
+  violin?.nodes.forEach((o) => o.stop())
+  violin?.gain.disconnect()
+  violin = null
+}
+
+type OperaOpts = { peak: number; attack: number; from: Vowel; to: Vowel; vibrato: number; dry: number; send: number }
+
+/** One sung note: saw/pulse/saw at -10/0/+10 cents through three parallel formant bandpasses (F1–F3)
+ *  that morph from one vowel to the next, with 6.2 Hz vibrato blooming in after the onset. */
+function createOperaVoice(note: number, t: number, len: number, o: OperaOpts) {
+  const c = ctx!
+  const src = c.createGain()
+  const env = c.createGain()
+  env.gain.setValueAtTime(0.0001, t)
+  env.gain.exponentialRampToValueAtTime(o.peak, t + o.attack)
+  env.gain.setTargetAtTime(o.peak * 0.8, t + o.attack, len * 0.4)
+  env.gain.setTargetAtTime(0.0001, t + len, 0.12)
+  env.connect(channel(o.dry, o.send))
+  FORMANTS[o.from].forEach((f, i) => {
+    const bp = c.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.Q.value = [7, 10, 12][i]
+    bp.frequency.setValueAtTime(f, t)
+    bp.frequency.linearRampToValueAtTime(FORMANTS[o.to][i], t + Math.max(0.2, len * 0.8))
+    const g = c.createGain()
+    g.gain.value = [1, 0.55, 0.3][i]
+    src.connect(bp).connect(g).connect(env)
+  })
+  const lfo = c.createOscillator()
+  lfo.frequency.value = 6.2
+  const depth = c.createGain()
+  depth.gain.setValueAtTime(0, t)
+  depth.gain.linearRampToValueAtTime(o.vibrato, t + 0.35)
+  lfo.connect(depth)
+  const end = t + len + 0.6
+  const oscs = ([['sawtooth', -10], ['square', 0], ['sawtooth', 10]] as const).map(([type, detune]) => {
+    const osc = c.createOscillator()
+    osc.type = type
+    osc.frequency.value = midi(note)
+    osc.detune.value = detune
+    depth.connect(osc.detune)
+    osc.connect(src)
+    return osc
+  })
+  ;[lfo, ...oscs].forEach((n) => {
+    n.start(t)
+    n.stop(end)
+  })
+}
+
+/** Dark choir chord: slow "oh"→"ah" voices, mostly into the hall; lifts an octave in the climax. */
+function choir(notes: number[], t: number, climax: boolean) {
+  notes.forEach((n) =>
+    createOperaVoice(n + (climax ? 12 : 0), t, BEAT * 3, {
+      peak: climax ? 0.022 : 0.028,
+      attack: 0.6,
+      from: 'oh',
+      to: 'ah',
+      vibrato: 12,
+      dry: 0.3,
+      send: 1,
+    }),
+  )
+}
+
+const HIGH_VIBRATO = new Set([2, 3, 7, 10]) // D, Eb, G, Bb
+function sopranoNote(note: number, t: number, len: number, from: Vowel, to: Vowel) {
+  const wide = note >= 74 && HIGH_VIBRATO.has(note % 12) && len >= BEAT * 1.5
+  createOperaVoice(note, t, len, { peak: 0.06, attack: 0.18, from, to, vibrato: wide ? 55 : 35, dry: 0.45, send: 1.2 })
+}
+
+let prevViolin: number | null = null
 function schedule() {
   if (!ctx) return
   while (nextTime < ctx.currentTime + 0.25) {
     const step = stepIndex % LOOP_STEPS
     const pos = step % 6
     const barNo = Math.floor(step / 6)
+    const climax = step >= CLIMAX_STEP
     const chord = CHORDS[barNo % CHORDS.length]
     const tones = chord.late && pos >= 3 ? chord.late : chord.notes
+    if (step === 0 || step === CLIMAX_STEP) violinSection(nextTime, climax)
     if (pos === 0) {
       downbeat(chord.bass, nextTime, barNo % 4 === 0)
-      choir(chord.notes, nextTime)
+      choir(chord.notes, nextTime, climax)
+      if (climax && barNo % 4 === 3) cadenceSwell(nextTime)
     }
-    if (pos === 3 && chord.late) choir(chord.late, nextTime)
+    if (pos === 3 && chord.late) choir(chord.late, nextTime, climax)
     stringPulse(tones[OSTINATO[pos] % tones.length], nextTime, pos % 2 === 0)
-    const m = MELODY_AT.get(step)
-    if (m) {
-      leadNote(m[0], nextTime, m[1] * EIGHTH, prevLead)
-      prevLead = m[0]
+    const v = VIOLIN_AT.get(step)
+    if (v) {
+      violinNote(v[0], nextTime, v[1] * EIGHTH, prevViolin, climax)
+      prevViolin = v[0]
+    }
+    const s = SOPRANO_AT.get(step)
+    if (s) {
+      const i = SOPRANO.indexOf(s)
+      sopranoNote(s[0], nextTime, s[1] * EIGHTH, s[2], SOPRANO[(i + 1) % SOPRANO.length][2])
     }
     nextTime += EIGHTH
     stepIndex++
@@ -298,11 +444,11 @@ function schedule() {
 function startProcedural() {
   if (!ctx || schedTimer !== null) return
   musicBus!.gain.cancelScheduledValues(ctx.currentTime)
-  musicBus!.gain.setValueAtTime(0.8, ctx.currentTime)
+  musicBus!.gain.setValueAtTime(MUSIC_GAIN, ctx.currentTime)
   nextTime = ctx.currentTime + 0.1
   stepIndex = 0
-  prevLead = null
-  startLead()
+  prevViolin = null
+  violin = createViolinVoice()
   schedTimer = window.setInterval(schedule, 60)
   schedule()
 }
@@ -310,9 +456,8 @@ function startProcedural() {
 function stopProcedural() {
   if (schedTimer !== null) clearInterval(schedTimer)
   schedTimer = null
-  stopLead()
+  stopViolin()
 }
-
 async function loadBgm(): Promise<AudioBuffer | null> {
   if (bgmBuffer !== undefined || !bgmUrl || !ctx) return bgmBuffer ?? null
   try {
