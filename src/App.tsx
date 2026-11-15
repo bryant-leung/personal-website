@@ -1,10 +1,8 @@
 import { Suspense, lazy, useCallback, useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
 import { RotateCcw } from 'lucide-react'
 import { ENTRANCE_DONE_KEY } from './components/entranceKey'
 import { LabyrinthNav } from './components/LabyrinthNav'
 
-// Three.js and the model only load when the intro actually plays (not on reloads that skip it).
 const EntranceSequence = lazy(() =>
   import('./components/EntranceSequence').then((m) => ({ default: m.EntranceSequence })),
 )
@@ -19,8 +17,6 @@ function hasSeenEntrance(): boolean {
 
 export default function App() {
   const [entered, setEntered] = useState<boolean>(hasSeenEntrance)
-  // Bumped on Replay so both the entrance and the cube remount fresh (labyrinth back on stage I).
-  const [run, setRun] = useState(0)
 
   const handleComplete = useCallback(() => {
     try {
@@ -31,24 +27,15 @@ export default function App() {
     setEntered(true)
   }, [])
 
-  const replay = () => {
-    setRun((n) => n + 1)
-    setEntered(false)
-  }
+  // The hero scroller stays mounted over the labyrinth; re-activating it scrolls back to 0px.
+  const replay = () => setEntered(false)
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#07070a]">
-      {/* Sync mode: the entrance fades out over the labyrinth as it fades in, in the same rect. */}
-      <AnimatePresence>
-        {entered ? (
-          <LabyrinthNav key={`labyrinth-${run}`} />
-        ) : (
-          <Suspense key={`entrance-${run}`} fallback={null}>
-            <EntranceSequence onComplete={handleComplete} />
-          </Suspense>
-        )}
-      </AnimatePresence>
-
+      <LabyrinthNav />
+      <Suspense fallback={null}>
+        <EntranceSequence active={!entered} onComplete={handleComplete} />
+      </Suspense>
       {entered && (
         <button
           type="button"
