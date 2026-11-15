@@ -93,18 +93,75 @@ function Girders() {
   )
 }
 
-/** Left half of a pointed cathedral window frame (500×1000, mirrored for the right half). */
+/** Left half of the dark soul gem (500×1000, mirrored): orb finial, collar, drooping wing shell, glowing core, pedestal. */
 function ArchHalf({ flip }: { flip?: boolean }) {
-  const inner = 'M500 30 C390 150 80 270 80 560 V1000'
+  const rim = { stroke: '#c084fc', strokeOpacity: 0.35, strokeWidth: 1.5, vectorEffect: 'non-scaling-stroke' as const }
   return (
-    <svg viewBox="0 0 500 1000" preserveAspectRatio="none" className="h-full w-full" style={flip ? { transform: 'scaleX(-1)' } : undefined} aria-hidden="true">
-      <path d="M0 0 H500 V30 C390 150 80 270 80 560 V1000 H0 Z" fill="#050507" />
-      <path d={inner} fill="none" stroke="#f5b942" strokeOpacity="0.45" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-      <path d="M500 62 C404 172 106 286 106 570 V1000" fill="none" stroke="#e11d48" strokeOpacity="0.22" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      {/* Lead-line tracery in the frame's spandrel. */}
-      <g fill="none" stroke="#f5b942" strokeOpacity="0.14" strokeWidth="1" vectorEffect="non-scaling-stroke">
-        <path d="M80 560 C150 420 280 260 440 110 M40 0 V1000 M0 300 H80 M0 600 H80 M0 840 H80" />
-        <path d="M20 160 C60 120 120 90 170 80 M200 40 C260 30 330 30 380 40" />
+    <svg viewBox="0 0 500 1000" preserveAspectRatio="xMaxYMid meet" className="h-full w-full" style={flip ? { transform: 'scaleX(-1)' } : undefined} aria-hidden="true">
+      <defs>
+        <linearGradient id="gem-shell" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#1d1828" />
+          <stop offset="0.35" stopColor="#09080d" />
+          <stop offset="0.75" stopColor="#030304" />
+          <stop offset="1" stopColor="#14111c" />
+        </linearGradient>
+        <radialGradient id="gem-orb" cx="0.85" cy="0.35" r="0.9">
+          <stop offset="0" stopColor="#e9d5ff" />
+          <stop offset="0.4" stopColor="#8b5cf6" />
+          <stop offset="1" stopColor="#3b0764" />
+        </radialGradient>
+        <linearGradient id="gem-flank" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#161224" />
+          <stop offset="0.5" stopColor="#08070d" />
+          <stop offset="1" stopColor="#161224" />
+        </linearGradient>
+        <linearGradient id="gem-panel" x1="0" y1="0" x2="1" y2="0.6">
+          <stop offset="0" stopColor="#7c3aed" />
+          <stop offset="0.35" stopColor="#4c1d95" />
+          <stop offset="0.75" stopColor="#1a1030" />
+          <stop offset="1" stopColor="#0b0912" />
+        </linearGradient>
+        <filter id="gem-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="18" />
+        </filter>
+      </defs>
+      {/* Shell with the core cut out, so the spinning crest shows through the heart */}
+      <path fillRule="evenodd" d="M500 225 C430 222 340 232 250 255 C150 280 70 320 42 400 C30 440 26 510 48 552 C66 582 105 565 145 540 C185 518 215 545 235 595 C265 670 315 750 355 840 H500 Z M500 300 C430 290 350 305 300 340 C270 440 285 580 340 670 C390 740 450 770 500 790 Z" fill="url(#gem-shell)" />
+      {/* Finial orb + collar */}
+      <path d="M500 50 A62 62 0 0 0 500 174 Z" fill="url(#gem-orb)" />
+      <path d="M500 168 H456 C440 182 438 214 456 230 H500 Z" fill="url(#gem-shell)" />
+      {/* Arm bridge over the core's shoulder */}
+      <path d="M500 255 C440 255 380 268 330 300 C380 296 440 304 500 322 Z" fill="url(#gem-shell)" />
+      {/* Pedestal: neck ring then flared foot */}
+      <path d="M500 835 H350 C335 850 335 870 352 882 H500 Z" fill="url(#gem-shell)" />
+      <path d="M500 880 H330 C290 900 255 935 245 975 L240 1000 H500 Z" fill="url(#gem-shell)" />
+      {/* Open rim lines only, so no seam is drawn down the centre */}
+      <g fill="none" {...rim}>
+        <path d="M500 50 A62 62 0 0 0 500 174 M456 168 C440 182 438 214 456 230" />
+        <path d="M500 225 C430 222 340 232 250 255 C150 280 70 320 42 400 C30 440 26 510 48 552 C66 582 105 565 145 540 C185 518 215 545 235 595 C265 670 315 750 355 840" />
+        <path d="M500 255 C440 255 380 268 330 300 C380 296 440 304 500 322" />
+        <path d="M350 835 C335 850 335 870 352 882 M330 880 C290 900 255 935 245 975 L240 1000" />
+      </g>
+      {/* Core rim: gold edge with violet bloom, framing the crest */}
+      <path d="M500 300 C430 290 350 305 300 340 C270 440 285 580 340 670 C390 740 450 770 500 790" fill="none" stroke="#a855f7" strokeOpacity="0.25" strokeWidth="10" filter="url(#gem-glow)" />
+      <path d="M500 300 C430 290 350 305 300 340 C270 440 285 580 340 670 C390 740 450 770 500 790" fill="none" stroke="#f5b942" strokeOpacity="0.6" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      {/* Lower side panel filling the gap under the wing: violet-lit outer edge fading to obsidian */}
+      <path d="M48 552 C175 585 305 700 352 882 L355 840 C315 750 265 670 235 595 C215 545 185 518 145 540 C105 565 66 582 48 552 Z" fill="url(#gem-panel)" />
+      <path d="M48 552 C175 585 305 700 352 882" fill="none" stroke="#a855f7" strokeOpacity="0.45" strokeWidth="12" filter="url(#gem-glow)" />
+      <path d="M48 552 C175 585 305 700 352 882" fill="none" stroke="rgba(216, 180, 254, 0.5)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      {/* Purple crystal plate set into each tapering flank, below the wing */}
+      <path d="M218 550 C242 582 260 627 280 672 C307 737 337 792 362 830 L405 796 C372 756 346 700 326 645 C311 600 296 566 272 542 Z" fill="url(#gem-flank)" stroke="rgba(168, 85, 247, 0.35)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      <path d="M245 560 C275 620 305 700 382 812" fill="none" stroke="#f5f3ff" strokeOpacity="0.08" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      {/* Violet sheen on the wing lobe and the tapering flank, like light caught on lacquer */}
+      <g fill="none" stroke="rgba(168, 85, 247, 0.35)" strokeLinecap="round" vectorEffect="non-scaling-stroke">
+        <path d="M200 285 C130 310 78 345 62 405" strokeOpacity="1" strokeWidth="2" />
+      </g>
+      {/* Specular highlights */}
+      <g fill="none" stroke="#f5f3ff" strokeLinecap="round" vectorEffect="non-scaling-stroke">
+        <path d="M410 240 C320 245 200 275 110 340" strokeOpacity="0.22" strokeWidth="2" />
+        <path d="M60 420 C52 460 52 500 56 530" strokeOpacity="0.12" strokeWidth="1.5" />
+        <path d="M470 95 A40 40 0 0 0 450 75" strokeOpacity="0.5" strokeWidth="3" />
+        <path d="M290 905 C270 925 262 950 258 975" strokeOpacity="0.15" strokeWidth="1.5" />
       </g>
     </svg>
   )
@@ -247,16 +304,21 @@ function SoulGemSeal() {
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="gem" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#c084fc" />
-          <stop offset="0.5" stopColor="#581c87" />
-          <stop offset="1" stopColor="#e11d48" />
+          <stop offset="0" stopColor="#e879f9" />
+          <stop offset="0.5" stopColor="#c026d3" />
+          <stop offset="1" stopColor="#7c3aed" />
         </linearGradient>
+        <radialGradient id="gem-heart" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stopColor="#c026d3" stopOpacity="0.85" />
+          <stop offset="0.5" stopColor="#7c3aed" stopOpacity="0.4" />
+          <stop offset="1" stopColor="#7c3aed" stopOpacity="0" />
+        </radialGradient>
         <path id="rune-ring" d="M0,-168 a168,168 0 1,1 -0.01,0" />
       </defs>
       <circle r="190" fill="none" stroke="#f5b942" strokeOpacity="0.35" strokeWidth="0.8" />
       <circle r="178" fill="none" stroke="#f5b942" strokeOpacity="0.6" strokeWidth="1.4" strokeDasharray="2 6" />
-      <text fill="#f5b942" fillOpacity="0.7" fontSize="13" letterSpacing="6">
-        <textPath href="#rune-ring">{RUNES + RUNES}</textPath>
+      <text fill="#f5b942" fillOpacity="0.7" fontSize="13">
+        <textPath href="#rune-ring" textLength="1050" lengthAdjust="spacing">{RUNES + RUNES}</textPath>
       </text>
       <circle r="150" fill="url(#orb-body)" />
       <circle r="150" fill="url(#orb-rim)" />
@@ -264,10 +326,10 @@ function SoulGemSeal() {
         <polygon points="0,-118 102,59 -102,59" />
         <polygon points="0,118 102,-59 -102,-59" />
       </g>
+      <ellipse rx="70" ry="95" fill="url(#gem-heart)" />
       <path d="M0 -62 L34 -10 L0 66 L-34 -10 Z" fill="url(#gem)" stroke="#f5b942" strokeWidth="1.5" />
       <path d="M-34 -10 L34 -10 M0 -62 L0 66" stroke="#fde68a" strokeOpacity="0.4" strokeWidth="0.8" />
       <ellipse cx="-38" cy="-78" rx="70" ry="34" fill="url(#orb-gloss)" transform="rotate(-24 -38 -78)" />
-      <circle cx="58" cy="70" r="6" fill="#f5b942" fillOpacity="0.35" />
     </svg>
   )
 }
@@ -411,8 +473,16 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
             </div>
           </div>
 
-          {/* Seal, smoke, particles, rings */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          {/* Foreground: soul gem shell; the crest sits on top, inside its heart */}
+          <div data-arch="l" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 origin-left">
+            <ArchHalf />
+          </div>
+          <div data-arch="r" className="pointer-events-none absolute inset-y-0 right-0 w-1/2 origin-right">
+            <ArchHalf flip />
+          </div>
+
+          {/* Seal, smoke, particles, rings, centred on the gem heart */}
+          <div className="absolute inset-0 flex items-center justify-center pt-[9vh]">
             {SMOKE.map((s, i) => (
               <div
                 key={i}
@@ -435,7 +505,7 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
                 style={{ width: p.size, height: p.size, background: p.gold ? '#f5b942' : '#c084fc', boxShadow: `0 0 12px ${p.gold ? '#f5b942' : '#9333ea'}` }}
               />
             ))}
-            <div data-orb className="relative h-[min(62vmin,520px)] w-[min(62vmin,520px)] drop-shadow-[0_0_60px_rgba(124,58,237,0.45)]">
+            <div data-orb className="relative h-[min(52vmin,460px)] w-[min(52vmin,460px)] drop-shadow-[0_0_60px_rgba(124,58,237,0.45)]">
               <SoulGemSeal />
               {/* Twin lizards ring the gem core, under the title; kept dim so the serif stays crisp. */}
               <div className="pointer-events-none absolute inset-[12.5%] opacity-80">
@@ -455,14 +525,6 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
           {/* Falling feathers and rising embers, behind the title */}
           <canvas ref={canvas} data-particles className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true" />
 
-          {/* Foreground: cathedral arch frame */}
-          <div data-arch="l" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 origin-left">
-            <ArchHalf />
-          </div>
-          <div data-arch="r" className="pointer-events-none absolute inset-y-0 right-0 w-1/2 origin-right">
-            <ArchHalf flip />
-          </div>
-
           {/* Editorial type */}
           <div data-hero-text className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-4 text-center" style={{ fontFamily: SERIF }}>
             <h1 className="text-[clamp(3.2rem,13vw,11rem)] leading-[0.85] font-light tracking-[0.04em] text-[#f7f1e3] mix-blend-difference">
@@ -470,7 +532,7 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
               <br />
               LEUNG
             </h1>
-            <p className="mt-6 text-[clamp(0.7rem,1.6vw,1rem)] tracking-[0.5em] text-[#f5b942]">COMPUTER SCIENCE &amp; AI ENGINEER</p>
+            <p className="mt-6 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(5,5,7,0.8),rgba(5,5,7,0.4)_55%,transparent_75%)] px-10 py-3 text-[clamp(0.7rem,1.6vw,1rem)] tracking-[0.5em] text-[#f5b942]">COMPUTER SCIENCE &amp; AI ENGINEER</p>
           </div>
 
           <div data-hero-cta className="absolute inset-x-0 bottom-10 flex flex-col items-center gap-3">
