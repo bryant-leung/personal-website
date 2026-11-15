@@ -313,10 +313,18 @@ function createViolinVoice(): Violin {
   return { nodes, freq: saws.map((o) => o.frequency), gain, vib, trem: tremDepth, high }
 }
 
+/** Clear automation from `t` on; Firefox lacks cancelAndHoldAtTime. */
+function prune(p: AudioParam, t: number) {
+  if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t)
+  else p.cancelScheduledValues(t)
+}
+
 function violinNote(note: number, t: number, len: number, prev: number | null, climax: boolean) {
   if (!violin) return
   const leap = prev === null ? 0 : Math.abs(note - prev)
   const glide = leap > 4 ? 0.045 : 0.01 // portamento only on dramatic leaps
+  // Persistent params: drop stale automation so the event timeline doesn't grow for the whole session.
+  ;[...violin.freq, violin.gain.gain, violin.vib.gain].forEach((p) => prune(p, t))
   violin.freq.forEach((f, i) => f.setTargetAtTime(midi(note) * (i < 2 ? 1 : 2), t, glide))
   // Bow change: brief dip, then a ~110 ms swell to full, easing back as the stroke travels.
   const peak = climax ? 0.085 : 0.07
@@ -332,6 +340,8 @@ function violinNote(note: number, t: number, len: number, prev: number | null, c
 /** Open or close the climax layers: octave doubling and 11 Hz tremolo. */
 function violinSection(t: number, climax: boolean) {
   if (!violin) return
+  prune(violin.high.gain, t)
+  prune(violin.trem.gain, t)
   violin.high.gain.setTargetAtTime(climax ? 0.3 : 0, t, 0.2)
   violin.trem.gain.setTargetAtTime(climax ? 0.38 : 0, t, 0.2)
 }
@@ -411,7 +421,8 @@ function sopranoNote(note: number, t: number, len: number, from: Vowel, to: Vowe
 let prevViolin: number | null = null
 function schedule() {
   if (!ctx) return
-  while (nextTime < ctx.currentTime + 0.25) {
+  if (nextTime < ctx.currentTime) nextTime = ctx.currentTime + 0.05 // resync after throttling, no burst
+  while (nextTime < ctx.currentTime + 1.2) {
     const step = stepIndex % LOOP_STEPS
     const pos = step % 6
     const barNo = Math.floor(step / 6)
