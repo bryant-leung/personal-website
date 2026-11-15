@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 
 test('featured builds link to each project repo, not the profile', async ({ page }) => {
   const panel = await open(page, 'Projects', 'Featured Builds')
-  await expect(panel).toContainText('Four systems')
+  await expect(panel).toContainText('Five systems')
   await expect(panel).toContainText('Decode and Detect')
   const hrefs = await panel.locator('a').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
   expect(hrefs).toEqual(expect.arrayContaining([
