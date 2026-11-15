@@ -82,6 +82,8 @@ SPA rewrites are included for Vercel (`vercel.json`) and Netlify (`public/_redir
 
 The art direction is a fan homage to the witch labyrinths of *Puella Magi Madoka Magica*. Its characters and setting belong to their respective rights holders. The music is original.
 
+The choir in the background music uses recorded samples from the [Sonatina Symphonic Orchestra](https://github.com/peastman/sso) by Mattias Westlund, under the [Creative Commons Sampling Plus 1.0](https://creativecommons.org/licenses/sampling+/1.0/) licence.
+
 ---
 
 <div align="center">
