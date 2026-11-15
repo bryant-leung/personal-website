@@ -29,7 +29,7 @@ export interface ExperienceEntry {
   role: string
   org: string
   period: string
-  kind: 'work' | 'hackathon' | 'education'
+  kind: 'work' | 'leadership' | 'education'
   summary: string
   bullets: string[]
 }
@@ -47,6 +47,7 @@ export interface Interest {
 }
 
 const GITHUB = 'https://github.com/bryant-leung'
+const REPO = (name: string) => `${GITHUB}/${name}`
 const LINKEDIN = 'https://www.linkedin.com/in/bryant-leung'
 
 export const profile = {
@@ -71,6 +72,23 @@ export const profile = {
 
   projects: [
     {
+      id: 'jimakukasane',
+      title: 'JimakuKasane',
+      jpTitle: '字幕重ね',
+      tagline: 'Chrome extension for learning Japanese from anime.',
+      description:
+        'A Chrome MV3 extension that adds auto-synced Japanese subtitles under the English ones, with offline JMdict click-for-meaning. When no subtitle file exists, a local Python server transcribes the episode with a LangGraph and Whisper pipeline.',
+      highlights: [
+        'Word difficulty scored from corpus frequency.',
+        '126 N2/N1 grammar patterns matched on conjugated forms.',
+        '243 Playwright end-to-end tests, strict TypeScript and versioned releases.',
+      ],
+      tech: ['TypeScript', 'Python', 'LangGraph', 'Whisper', 'Playwright'],
+      visual: 'subtitles',
+      links: [{ label: 'GitHub repo', href: REPO('jimaku-kasane') }],
+      year: '2026',
+    },
+    {
       id: 'graphrag-disaster',
       title: 'Cross-Lingual Spatial-Temporal GraphRAG for Disaster Resilience',
       jpTitle: '時空間グラフRAG・防災',
@@ -88,23 +106,6 @@ export const profile = {
       year: '2026',
     },
     {
-      id: 'jimakukasane',
-      title: 'JimakuKasane',
-      jpTitle: '字幕重ね',
-      tagline: 'Chrome extension for learning Japanese from anime.',
-      description:
-        'A Chrome MV3 extension that adds auto-synced Japanese subtitles under the English ones, with offline JMdict click-for-meaning. When no subtitle file exists, a local Python server transcribes the episode with a LangGraph and Whisper pipeline.',
-      highlights: [
-        'Word difficulty scored from corpus frequency.',
-        '126 N2/N1 grammar patterns matched on conjugated forms.',
-        '243 Playwright end-to-end tests, strict TypeScript and versioned releases.',
-      ],
-      tech: ['TypeScript', 'Python', 'LangGraph', 'Whisper', 'Playwright'],
-      visual: 'subtitles',
-      links: [{ label: 'GitHub profile', href: GITHUB }],
-      year: '2026',
-    },
-    {
       id: 'civictrace',
       title: 'CivicTrace',
       jpTitle: '市民ハザードマップ',
@@ -118,8 +119,25 @@ export const profile = {
       ],
       tech: ['React', 'Leaflet', 'Node / Express', 'PostgreSQL (Supabase)'],
       visual: 'map',
-      links: [{ label: 'GitHub profile', href: GITHUB }],
+      links: [{ label: 'GitHub repo', href: REPO('Hazard-Reporting-Interactive-Map') }],
       year: '2025–26',
+    },
+    {
+      id: 'decode-and-detect',
+      title: 'Decode and Detect',
+      jpTitle: 'XRPL資金洗浄検知',
+      tagline: 'XRPL anti-money-laundering hackathon (UK CBT, team of 4).',
+      description:
+        'An ensemble of three gradient-boosted models on 254 engineered features, scoring 40,101 test transactions for laundering risk.',
+      highlights: [
+        'LightGBM, XGBoost and CatBoost ensemble on 254 engineered features.',
+        'Tested GNN stacking with out-of-fold scores.',
+        'Time-block cross-validation with a one-hour embargo to prevent label leakage.',
+      ],
+      tech: ['Python', 'LightGBM', 'XGBoost', 'CatBoost', 'GraphSAGE'],
+      visual: 'graph',
+      links: [{ label: 'GitHub repo', href: REPO('gradient-descent-cbt-hackathon') }],
+      year: 'Oct 2026',
     },
   ] as Project[],
 
@@ -150,26 +168,15 @@ export const profile = {
       ],
     },
     {
-      role: 'Decode and Detect · XRPL AML Hackathon',
-      org: 'UK CBT · team of 4',
-      period: 'Oct 2026',
-      kind: 'hackathon',
-      summary: 'Anti-money-laundering risk scoring for XRPL transactions.',
-      bullets: [
-        'Ensemble of LightGBM, XGBoost and CatBoost on 254 engineered features, scoring 40,101 test transactions.',
-        'Tested GraphSAGE stacking with out-of-fold scores and time-block cross-validation with a one-hour embargo against label leakage.',
-      ],
-    },
-    {
       role: 'BSc Artificial Intelligence and Computer Science',
       org: 'University of Birmingham',
       period: '2024 – Jun 2027',
       kind: 'education',
       summary: 'First-class average. Top 5 in the UK for Computer Science (Complete University Guide 2026).',
       bullets: [
-        'Year 1: 76.3%, including Object-Oriented Programming 94%.',
-        'Year 2: 73.3%, including Software Engineering 82% and Functional Programming 76%.',
-        'Final year: NLP, Neural Computation, Computer Vision and Imaging, Security of Real-World Systems.',
+        'Year 1: 76.3% (Object-Oriented Programming 94%, Artificial Intelligence 1 79%, Mathematical and Logical Foundations 79%).',
+        'Year 2: 73.3% (Software Engineering 82%, Functional Programming 76%, Security and Networks 75%).',
+        'Final year: Computer Science Project, Natural Language Processing, Neural Computation, Computer Vision and Imaging, Security of Real-World Systems.',
       ],
     },
     {
@@ -178,7 +185,34 @@ export const profile = {
       period: '2024',
       kind: 'education',
       summary: 'English 5*, Mathematics 5.',
-      bullets: ['Vice-Chairman of the Japanese Culture Club and the Diocesan Media Group.'],
+      bullets: [],
+    },
+    {
+      role: 'Ambassador, Center for Further Studies',
+      org: "Diocesan Boys' School",
+      period: '2022 – 23',
+      kind: 'leadership',
+      summary: 'University outreach events.',
+      bullets: [
+        'Helped plan and organise events where university representatives from around the world gave talks to students.',
+        'Acted as MC at several events, led representatives around campus, photographed events and designed their posters.',
+      ],
+    },
+    {
+      role: 'Vice-Chairman, Japanese Culture Club',
+      org: "Diocesan Boys' School",
+      period: '2022 – 23',
+      kind: 'leadership',
+      summary: 'Bringing Japanese culture to more students.',
+      bullets: ['Designed and sold products at the Garden Fete stall; ran fan-art competitions and weekly screenings.'],
+    },
+    {
+      role: 'Vice-Chairman, Diocesan Media Group',
+      org: "Diocesan Boys' School",
+      period: '2021 – 23',
+      kind: 'leadership',
+      summary: 'Led the photography division.',
+      bullets: ['Covered Sports Day and School Fete, and helped train junior members.'],
     },
   ] as ExperienceEntry[],
 
@@ -189,7 +223,7 @@ export const profile = {
     { category: 'Data & Tools', items: ['PostgreSQL', 'PostGIS', 'Neo4j', 'Git', 'Playwright', 'pytest'] },
     {
       category: 'Certifications',
-      items: ['LangChain / LangGraph / LangSmith agents (PwC × UoB, 2026)', 'Google AI Studio prototypes (2025)', 'Red Hat Agile Project Management (2025)'],
+      items: ['PwC × University of Birmingham: LangChain / LangGraph / LangSmith agents (Feb 2026)', 'Google AI Studio prototypes (Nov 2025)', 'Red Hat Agile Project Management (Jun 2025)'],
     },
     { category: 'Spoken', items: ['Cantonese (native)', 'English (native)', 'Mandarin (working)', 'Japanese (JLPT N2)'] },
   ] as SkillGroup[],
