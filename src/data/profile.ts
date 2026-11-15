@@ -14,7 +14,7 @@ export type ProjectVisual = 'graph' | 'subtitles' | 'map'
 export interface Project {
   id: string
   title: string
-  jpTitle: string
+  jpTitle?: string
   tagline: string
   description: string
   highlights: string[]
@@ -41,7 +41,6 @@ export interface SkillGroup {
 
 export interface Interest {
   title: string
-  jpTitle: string
   blurb: string
   icon: 'guitar' | 'music' | 'tv'
 }
@@ -52,9 +51,7 @@ const LINKEDIN = 'https://www.linkedin.com/in/bryant-leung'
 
 export const profile = {
   name: 'Bryant Leung',
-  jpName: 'ブライアント・レオン',
   role: 'Final-Year AI & Computer Science Student · Software Engineer',
-  jpRole: 'バーミンガム大学 AI・コンピュータサイエンス専攻',
   location: 'Birmingham, UK',
   tagline: 'Full-stack and machine-learning systems that show their working.',
   bio: [
@@ -67,7 +64,6 @@ export const profile = {
     { label: 'LinkedIn', href: LINKEDIN, icon: 'linkedin' },
   ] as SocialLink[],
   rotatePrompt: 'Rotate the cube to explore',
-  jpRotatePrompt: '回して探索する',
 
   projects: [
     {
@@ -90,7 +86,6 @@ export const profile = {
     {
       id: 'graphrag-disaster',
       title: 'Cross-Lingual Spatial-Temporal GraphRAG for Disaster Resilience',
-      jpTitle: '時空間グラフRAG・防災',
       tagline: 'Question answering over the 2026 Kumamoto earthquake reports, with a citation on every answer.',
       description:
         'My final-year project: a question-answering system over official reports from the 2026 Kumamoto earthquake. Neo4j and PostGIS resolve recency, road closures and routes before the LLM runs, so the model writes from facts the graph has already settled.',
@@ -107,7 +102,6 @@ export const profile = {
     {
       id: 'civictrace',
       title: 'CivicTrace',
-      jpTitle: '市民ハザードマップ',
       tagline: 'Hazard reporting for residents, triage for council staff.',
       description:
         'Built in a team of six for the Software Engineering module. Residents report hazards on an interactive risk heatmap; council staff triage them and track the fixes.',
@@ -124,7 +118,6 @@ export const profile = {
     {
       id: 'decode-and-detect',
       title: 'Decode and Detect',
-      jpTitle: 'XRPL資金洗浄検知',
       tagline: 'XRPL anti-money-laundering hackathon (UK CBT, team of 4).',
       description:
         'An ensemble of three gradient-boosted models on 254 engineered features, scoring 40,101 test transactions for laundering risk.',
@@ -228,9 +221,9 @@ export const profile = {
   ] as SkillGroup[],
 
   interests: [
-    { title: 'Electric guitar', jpTitle: 'エレキギター', blurb: 'Dialling in clean J-rock and indie tones.', icon: 'guitar' },
-    { title: 'Japanese music', jpTitle: '邦楽', blurb: 'The soundtrack to most of my coding.', icon: 'music' },
-    { title: 'Anime cinematography', jpTitle: 'アニメ撮影', blurb: 'Framing, colour and light; Shaft and Shinkai shaped how this site looks.', icon: 'tv' },
+    { title: 'Electric guitar', blurb: 'Dialling in clean J-rock and indie tones.', icon: 'guitar' },
+    { title: 'Japanese music', blurb: 'The soundtrack to most of my coding.', icon: 'music' },
+    { title: 'Anime cinematography', blurb: 'Framing, colour and light; Shaft and Shinkai shaped how this site looks.', icon: 'tv' },
   ] as Interest[],
 } as const
 

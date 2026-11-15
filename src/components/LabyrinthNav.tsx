@@ -151,7 +151,7 @@ const CHAPTERS: Chapter[] = [
         tags: [...new Set(profile.projects.flatMap((p) => p.tech))].slice(0, 8),
         items: profile.projects.map((p) => ({
           heading: p.title,
-          meta: `${p.year} · ${p.jpTitle}`,
+          meta: p.jpTitle ? `${p.year} · ${p.jpTitle}` : `${p.year}`,
           text: p.tagline,
           bullets: p.highlights,
         })),
@@ -189,7 +189,7 @@ const CHAPTERS: Chapter[] = [
   {
     numeral: 'III',
     title: 'Experience & Stack',
-    jpTitle: '経歴と技術',
+    jpTitle: '経歴・スキル',
     blurb: 'Roles I have held and the tools I reach for.',
     nodes: [
       {
