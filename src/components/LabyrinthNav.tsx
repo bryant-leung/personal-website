@@ -431,7 +431,7 @@ export function LabyrinthNav() {
   const nodeSize = wide ? 44 : 40
   const lizard = useLizardTraversal(step, reduced, turn, R)
   // Mobile sheet stops just below the lowest active label (≈ cy − 0.2R + label height + gap); HUD takes ~70px.
-  const sheetMax = Math.max(200, h - 70 - (cy - 0.2 * R + 48))
+  const sheetMax = Math.max(h * 0.55, h - 70 - (cy - 0.2 * R + 48))
 
   return (
     <motion.div

@@ -44,13 +44,13 @@ export default function App() {
       <Suspense fallback={null}>
         <EntranceSequence active={!entered} onComplete={handleComplete} />
       </Suspense>
-      <div className="fixed right-4 top-4 z-40 flex items-center gap-3">
+      <div className="fixed right-3 top-3 z-40 flex items-center gap-2 sm:right-4 sm:top-4 sm:gap-3">
         <button
           type="button"
           onClick={toggleSound}
           aria-pressed={sound}
           aria-label={sound ? 'Turn sound off' : 'Turn sound on'}
-          className="flex items-center gap-2 rounded-full border border-[#f5b942]/70 bg-[#050507]/80 px-4 py-2 text-xs font-medium tracking-[0.25em] text-[#f5b942] shadow-[0_0_18px_rgba(245,185,66,0.2)] backdrop-blur-md transition hover:border-[#e2d9f3] hover:text-[#e2d9f3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2d9f3]"
+          className="flex items-center gap-2 rounded-full border border-[#f5b942]/70 bg-[#050507]/80 px-3 py-2.5 sm:px-4 sm:py-2 text-xs font-medium tracking-[0.25em] text-[#f5b942] shadow-[0_0_18px_rgba(245,185,66,0.2)] backdrop-blur-md transition hover:border-[#e2d9f3] hover:text-[#e2d9f3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2d9f3]"
         >
           <span aria-hidden="true" className="flex h-3 items-end gap-[2px]">
             {[0, 1, 2].map((i) => (
@@ -61,7 +61,7 @@ export default function App() {
               />
             ))}
           </span>
-          {sound ? 'SOUND ON' : 'SOUND OFF'}
+          <span className="hidden sm:inline">{sound ? 'SOUND ON' : 'SOUND OFF'}</span>
         </button>
         {entered && (
           <button
@@ -69,10 +69,10 @@ export default function App() {
             onClick={replay}
             aria-label="Replay intro"
             title="Replay intro"
-            className="flex items-center gap-2 rounded-full border border-[#f5b942]/70 bg-[#0b0914]/70 px-4 py-2 text-sm font-medium tracking-wide text-[#f5b942] shadow-[0_0_18px_rgba(245,185,66,0.25),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:border-[#e2d9f3] hover:text-[#e2d9f3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2d9f3]"
+            className="flex items-center gap-2 rounded-full border border-[#f5b942]/70 bg-[#0b0914]/70 px-3 py-2.5 sm:px-4 sm:py-2 text-sm font-medium tracking-wide text-[#f5b942] shadow-[0_0_18px_rgba(245,185,66,0.25),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:border-[#e2d9f3] hover:text-[#e2d9f3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2d9f3]"
           >
             <RotateCcw size={15} aria-hidden="true" />
-            Replay intro
+            <span className="hidden sm:inline">Replay intro</span>
           </button>
         )}
       </div>
