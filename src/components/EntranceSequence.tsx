@@ -50,6 +50,182 @@ function Spires({ seed, fill, edge, flip }: { seed: number; fill: string; edge: 
   )
 }
 
+/** Crossed steel I-beams over a ruined skyline, lower-left corner of a 600×600 box (mirror for the right). */
+function Girders() {
+  const beam = (x1: number, y1: number, x2: number, y2: number, w: number, k: number) => {
+    const a = Math.atan2(y2 - y1, x2 - x1)
+    const nx = -Math.sin(a) * w
+    const ny = Math.cos(a) * w
+    const len = Math.hypot(x2 - x1, y2 - y1)
+    const lattice = Array.from({ length: Math.floor(len / (w * 2.4)) }, (_, j) => {
+      const t0 = (j * w * 2.4) / len
+      const t1 = ((j + 1) * w * 2.4) / len
+      const p = (t: number, s: number) => `${(x1 + (x2 - x1) * t + nx * s).toFixed(1)} ${(y1 + (y2 - y1) * t + ny * s).toFixed(1)}`
+      return `M${p(t0, -1)} L${p(t1, 1)} M${p(t1, -1)} L${p(t1, 1)}`
+    }).join(' ')
+    return (
+      <g key={k}>
+        <path d={`M${x1 + nx} ${y1 + ny} L${x2 + nx} ${y2 + ny} L${x2 - nx} ${y2 - ny} L${x1 - nx} ${y1 - ny} Z`} fill="#07060b" stroke="#f5b942" strokeOpacity="0.6" strokeWidth="1.2" />
+        <path d={lattice} fill="none" stroke="#f5b942" strokeOpacity="0.16" strokeWidth="0.8" />
+      </g>
+    )
+  }
+  return (
+    <svg viewBox="0 0 600 600" preserveAspectRatio="xMinYMax meet" className="h-full w-full overflow-visible" aria-hidden="true">
+      {/* Ruined towers: broken tops, a few lit windows. */}
+      <path
+        d="M0 600 V330 L40 320 L52 290 L70 335 L110 340 V250 L128 236 L140 262 L172 258 V600 Z M190 600 V380 L230 372 L238 350 L262 384 L290 390 V600 Z"
+        fill="#06050a"
+        stroke="#f5b942"
+        strokeOpacity="0.28"
+        strokeWidth="1"
+      />
+      <g fill="#d97706" opacity="0.35">
+        {[[20, 380], [86, 410], [128, 300], [146, 470], [214, 430], [260, 500]].map(([x, y], i) => (
+          <rect key={i} x={x} y={y} width="7" height="12" />
+        ))}
+      </g>
+      {beam(-40, 560, 470, 70, 9, 0)}
+      {beam(-20, 250, 360, 520, 7, 1)}
+      {beam(150, 600, 330, 150, 6, 2)}
+    </svg>
+  )
+}
+
+/** Left half of a pointed cathedral window frame (500×1000, mirrored for the right half). */
+function ArchHalf({ flip }: { flip?: boolean }) {
+  const inner = 'M500 30 C390 150 80 270 80 560 V1000'
+  return (
+    <svg viewBox="0 0 500 1000" preserveAspectRatio="none" className="h-full w-full" style={flip ? { transform: 'scaleX(-1)' } : undefined} aria-hidden="true">
+      <path d="M0 0 H500 V30 C390 150 80 270 80 560 V1000 H0 Z" fill="#050507" />
+      <path d={inner} fill="none" stroke="#f5b942" strokeOpacity="0.45" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      <path d="M500 62 C404 172 106 286 106 570 V1000" fill="none" stroke="#e11d48" strokeOpacity="0.22" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      {/* Lead-line tracery in the frame's spandrel. */}
+      <g fill="none" stroke="#f5b942" strokeOpacity="0.14" strokeWidth="1" vectorEffect="non-scaling-stroke">
+        <path d="M80 560 C150 420 280 260 440 110 M40 0 V1000 M0 300 H80 M0 600 H80 M0 840 H80" />
+        <path d="M20 160 C60 120 120 90 170 80 M200 40 C260 30 330 30 380 40" />
+      </g>
+    </svg>
+  )
+}
+
+/* ── Canvas layer: falling obsidian feathers and rising embers; swirls into the smoke as `progress` → 1. ── */
+const FEATHER = (() => {
+  // Unit feather pointing down: quill from (0,-0.5) to (0,0.5), wider left vane, notched edges.
+  const p = new Path2D()
+  p.moveTo(0, -0.5)
+  p.bezierCurveTo(-0.2, -0.38, -0.24, -0.05, -0.17, 0.12)
+  p.lineTo(-0.11, 0.1)
+  p.bezierCurveTo(-0.14, 0.24, -0.08, 0.36, 0.01, 0.5)
+  p.bezierCurveTo(0.09, 0.34, 0.12, 0.16, 0.11, -0.02)
+  p.lineTo(0.07, -0.04)
+  p.bezierCurveTo(0.12, -0.22, 0.08, -0.38, 0, -0.5)
+  p.closePath()
+  const q = new Path2D()
+  q.moveTo(0.015, 0.58)
+  q.quadraticCurveTo(-0.03, 0, 0, -0.5)
+  return { vane: p, quill: q }
+})()
+
+function useParticleCanvas(canvas: React.RefObject<HTMLCanvasElement | null>, progress: React.RefObject<number>) {
+  useEffect(() => {
+    const c = canvas.current
+    const ctx = c?.getContext('2d')
+    if (!c || !ctx) return
+    let w = 0
+    let h = 0
+    const resize = () => {
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      w = c.clientWidth
+      h = c.clientHeight
+      c.width = Math.round(w * dpr)
+      c.height = Math.round(h * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+    const feathers = Array.from({ length: 30 }, (_, i) => {
+      const z = i % 3 // 0 far, 2 near
+      return { x: Math.random(), y: Math.random(), z, size: [30, 46, 72][z] * rnd(0.8, 1.2), vy: [0.018, 0.028, 0.045][z] * rnd(0.8, 1.2), ph: rnd(0, 6.28), sway: rnd(0.4, 0.9), tilt: rnd(-0.6, 0.6) }
+    })
+    const embers = Array.from({ length: 40 }, () => ({ x: Math.random(), y: rnd(0.55, 1.05), r: rnd(0.7, 2), vy: rnd(0.02, 0.05), ph: rnd(0, 6.28), gold: Math.random() < 0.6 }))
+    let last = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+      const p = progress.current ?? 0
+      ctx.clearRect(0, 0, w, h)
+      if (p >= 0.85) return
+      const fade = 1 - Math.min(1, Math.max(0, (p - 0.45) / 0.35))
+      const swirl = Math.min(1, p / 0.5)
+      const cx = w / 2
+      const cy = h / 2
+      const toward = (x: number, y: number, k: number) => {
+        // Spiral around the centre, flung outward with the smoke.
+        const dx = x - cx
+        const dy = y - cy
+        const r = Math.hypot(dx, dy) || 1
+        const a = Math.atan2(dy, dx) + swirl * swirl * k
+        const rr = r * (1 + swirl * 0.6)
+        return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]
+      }
+      const t = now / 1000
+
+      for (const f of feathers) {
+        f.y += f.vy * dt
+        if (f.y > 1.1) {
+          f.y = -0.1
+          f.x = Math.random()
+        }
+        const bx = (f.x + Math.sin(t * f.sway + f.ph) * 0.03) * w
+        const [x, y] = toward(bx, f.y * h, 2.4 + f.z * 0.6)
+        const roll = Math.cos(t * (1.2 + f.z * 0.3) + f.ph) // 3D flutter: squash across the quill
+        ctx.save()
+        ctx.globalAlpha = fade * [0.7, 0.85, 1][f.z]
+        ctx.translate(x, y)
+        ctx.rotate(f.tilt + Math.sin(t * f.sway * 1.3 + f.ph) * 0.45 + swirl * 3)
+        ctx.scale(f.size * (0.25 + 0.75 * Math.abs(roll)), f.size)
+        ctx.lineWidth = 1.6 / f.size
+        ctx.fillStyle = '#090812'
+        ctx.fill(FEATHER.vane)
+        ctx.strokeStyle = roll > 0 ? 'rgba(124, 58, 237, 0.45)' : 'rgba(225, 29, 72, 0.25)'
+        ctx.stroke(FEATHER.vane)
+        ctx.strokeStyle = 'rgba(124, 58, 237, 0.3)'
+        ctx.stroke(FEATHER.quill)
+        ctx.restore()
+      }
+
+      for (const e of embers) {
+        e.y -= e.vy * dt
+        if (e.y < 0.35) {
+          e.y = rnd(0.95, 1.05)
+          e.x = Math.random()
+        }
+        const life = Math.min(1, (e.y - 0.35) / 0.3)
+        const [x, y] = toward((e.x + Math.sin(t * 0.8 + e.ph) * 0.01) * w, e.y * h, 3.2)
+        const flick = 0.6 + 0.4 * Math.sin(t * 6 + e.ph)
+        const col = e.gold ? '245, 185, 66' : '225, 29, 72'
+        ctx.fillStyle = `rgba(${col}, ${(0.18 * life * flick * fade).toFixed(3)})`
+        ctx.beginPath()
+        ctx.arc(x, y, e.r * 3.5, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = `rgba(${col}, ${(0.9 * life * flick * fade).toFixed(3)})`
+        ctx.beginPath()
+        ctx.arc(x, y, e.r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', resize)
+    }
+  }, [canvas, progress])
+}
+
 function SoulGemSeal() {
   return (
     <svg viewBox="-200 -200 400 400" className="h-full w-full overflow-visible" aria-hidden="true">
