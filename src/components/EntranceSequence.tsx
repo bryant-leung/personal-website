@@ -285,6 +285,9 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
   const content = useRef<HTMLDivElement>(null)
   const lenis = useRef<Lenis | null>(null)
   const state = useRef({ active, onComplete })
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const progress = useRef(0)
+  useParticleCanvas(canvas, progress)
   useEffect(() => {
     state.current = { active, onComplete }
   }, [active, onComplete])
@@ -327,6 +330,11 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
         .to('[data-plane="near-r"]', { xPercent: 110, yPercent: 35, scale: 1.3, duration: 0.7 }, 0.05)
         .to('[data-plane]', { opacity: 0, duration: 0.2 }, 0.8)
         .to('[data-backdrop]', { opacity: 0, duration: 0.3 }, 0.7)
+        .to('[data-girder="l"]', { xPercent: -80, yPercent: 25, scale: 1.2, duration: 0.75 }, 0.08)
+        .to('[data-girder="r"]', { xPercent: 80, yPercent: 25, scale: 1.2, duration: 0.75 }, 0.08)
+        .to('[data-arch="l"]', { xPercent: -100, scale: 1.15, duration: 0.65, ease: 'power1.in' }, 0.02)
+        .to('[data-arch="r"]', { xPercent: 100, scale: 1.15, duration: 0.65, ease: 'power1.in' }, 0.02)
+        .to('[data-girder], [data-arch], [data-particles]', { opacity: 0, duration: 0.15 }, 0.72)
 
       ScrollTrigger.create({
         scroller: wrap,
@@ -336,6 +344,7 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
         scrub: true,
         animation: tl,
         onUpdate: (self) => {
+          progress.current = self.progress
           if (self.progress > 0.995 && state.current.active) state.current.onComplete()
         },
       })
@@ -371,12 +380,32 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
           <div data-backdrop className="absolute inset-0 bg-[#050507]" />
           <div data-backdrop className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.16),transparent_60%)]" />
 
+          {/* Smoldering horizon: bottom third only, so the sky behind the title stays obsidian. */}
+          <div
+            data-backdrop
+            className="absolute inset-x-0 bottom-0 h-[42%]"
+            style={{
+              background:
+                'radial-gradient(ellipse 70% 90% at 50% 100%, rgba(217,119,6,0.32), rgba(153,27,27,0.28) 40%, rgba(124,58,237,0.12) 70%, transparent 100%), linear-gradient(to top, rgba(153,27,27,0.22), transparent)',
+            }}
+          />
+
           {/* Far plane */}
           <div data-plane="far-l" className="absolute bottom-0 left-0 h-[85%] w-[38%] opacity-70">
             <Spires seed={3} fill="#120b20" edge="#3b2560" />
           </div>
           <div data-plane="far-r" className="absolute bottom-0 right-0 h-[85%] w-[38%] opacity-70">
             <Spires seed={7} fill="#120b20" edge="#3b2560" flip />
+          </div>
+
+          {/* Midground: crossed girders over ruined towers */}
+          <div data-girder="l" className="absolute bottom-0 left-0 h-[72%] w-[50%] origin-bottom-left">
+            <Girders />
+          </div>
+          <div data-girder="r" className="absolute bottom-0 right-0 h-[72%] w-[50%] origin-bottom-right">
+            <div className="h-full w-full -scale-x-100">
+              <Girders />
+            </div>
           </div>
 
           {/* Seal, smoke, particles, rings */}
@@ -418,6 +447,17 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
           </div>
           <div data-plane="near-r" className="absolute -bottom-[5%] -right-[6%] h-[70%] w-[30%]">
             <Spires seed={5} fill="#06050a" edge="#f5b94233" flip />
+          </div>
+
+          {/* Falling feathers and rising embers, behind the title */}
+          <canvas ref={canvas} data-particles className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true" />
+
+          {/* Foreground: cathedral arch frame */}
+          <div data-arch="l" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 origin-left">
+            <ArchHalf />
+          </div>
+          <div data-arch="r" className="pointer-events-none absolute inset-y-0 right-0 w-1/2 origin-right">
+            <ArchHalf flip />
           </div>
 
           {/* Editorial type */}
