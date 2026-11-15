@@ -1,5 +1,5 @@
-// PR #5: Japanese kept only for JimakuKasane and the chapter titles; Experience title reads 経歴・スキル.
-// Run: npm run e2e -- e2e/pr-5-japanese-copy-cleanup.spec.ts
+// PR #1: Japanese kept only for JimakuKasane and the chapter titles; Experience title reads 経歴・スキル.
+// Run: npm run e2e -- e2e/pr-1-japanese-copy-cleanup.spec.ts
 import { expect, test, type Page } from '@playwright/test'
 
 async function open(page: Page, stage: string, node: string) {
