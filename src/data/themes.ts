@@ -7,7 +7,6 @@ export interface FaceTheme {
   /** English nav label */
   label: string
   /** Japanese nav label */
-  jpLabel: string
   /** Displayed angle on the compass, e.g. "0°" */
   angleLabel: string
   /** Y rotation applied to the cube to bring this face to the front */
@@ -30,7 +29,6 @@ export const themes: readonly FaceTheme[] = [
   {
     id: 'intro',
     label: 'Intro',
-    jpLabel: '序章',
     angleLabel: '0°',
     rotateY: 0,
     bgGradient:
@@ -46,7 +44,6 @@ export const themes: readonly FaceTheme[] = [
   {
     id: 'projects',
     label: 'Projects',
-    jpLabel: '作品',
     angleLabel: '90°',
     rotateY: -90,
     bgGradient:
@@ -62,7 +59,6 @@ export const themes: readonly FaceTheme[] = [
   {
     id: 'experience',
     label: 'Experience',
-    jpLabel: '経歴',
     angleLabel: '180°',
     rotateY: -180,
     bgGradient:
@@ -78,7 +74,6 @@ export const themes: readonly FaceTheme[] = [
   {
     id: 'contact',
     label: 'Contact',
-    jpLabel: '連絡',
     angleLabel: '270°',
     rotateY: -270,
     bgGradient:
