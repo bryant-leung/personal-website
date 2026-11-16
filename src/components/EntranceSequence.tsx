@@ -613,41 +613,27 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'none' } })
       // Transform and opacity only, so every tween stays on the compositor.
-      tl.to('[data-hero-text]', { yPercent: -60, scale: 1.15, opacity: 0, duration: 0.35 }, 0)
-        .to('[data-hero-cta]', { opacity: 0, y: 30, duration: 0.15 }, 0)
-        // 0–45%: fissure ignites, shockwave, orb halves part, firelight over the receding towers
-        .fromTo('[data-fissure]', { opacity: 0, scaleY: 0 }, { opacity: 1, scaleY: 1, duration: 0.08, ease: 'power3.out' }, 0)
-        .to('[data-fissure]', { opacity: 0, scaleX: 3, duration: 0.15, ease: 'power1.in' }, 0.3)
-        .to('[data-orb-half]', { x: (i) => (i ? '70vw' : '-70vw'), rotation: (i) => (i ? 14 : -14), scale: 1.8, duration: 0.39, ease: 'power2.in' }, 0.06)
-        .to('[data-orb-half], [data-orb-glow]', { opacity: 0, duration: 0.12 }, 0.33)
-        .to('[data-seal-lizard]', { x: (i) => (i ? -70 : 70), y: (i) => (i ? 50 : -50), scale: 1.5, opacity: 0, transformOrigin: '50% 50%', duration: 0.4, ease: 'power2.in' }, 0.06)
-        .fromTo('[data-smoke]', { scale: 0.4, opacity: 0 }, { scale: 1.6, opacity: 0.45, rotation: (i) => SMOKE[i].r, duration: 0.45, stagger: 0.03, ease: 'power2.out' }, 0.15)
-        .to('[data-smoke]', { opacity: 0, duration: 0.3, stagger: 0.02 }, 0.6)
+      // Transform and opacity only. Match-cut tunnel zoom: the intact emblem rushes past, its rune ring becomes the dial.
+      tl.to('[data-hero-text]', { scale: 1.08, opacity: 0, duration: 0.35, ease: 'power1.out' }, 0)
+        .to('[data-hero-cta]', { scale: 1.08, opacity: 0, duration: 0.35, ease: 'power1.out' }, 0)
+        // 15–85%: casing, towers and orb plunge toward the camera and fade at the edges
+        .to('[data-tunnel]', { scale: 3.8, duration: 0.7, ease: 'power2.in' }, 0.15)
+        .to('[data-orb]', { scale: 3.8, duration: 0.7, ease: 'power2.in' }, 0.15)
+        .to('[data-tunnel]', { opacity: 0, duration: 0.3, ease: 'power1.in' }, 0.55)
+        .to('[data-orb]', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 0.3)
+        .fromTo('[data-inferno]', { yPercent: 100, opacity: 0 }, { yPercent: 0, opacity: 0.5, duration: 0.3, ease: 'power2.out' }, 0.1)
+        .to('[data-inferno]', { opacity: 0, duration: 0.2 }, 0.45)
+        .fromTo('[data-smoke]', { scale: 0.4, opacity: 0 }, { scale: 1.6, opacity: 0.35, rotation: (i) => SMOKE[i].r, duration: 0.4, stagger: 0.03, ease: 'power2.out' }, 0.15)
+        .to('[data-smoke]', { opacity: 0, duration: 0.3, stagger: 0.02 }, 0.5)
         .fromTo('[data-particle]', { x: 0, y: 0, opacity: 0 }, { x: (i) => `${particles[i].dx}vmax`, y: (i) => `${particles[i].dy}vmax`, opacity: 1, duration: 0.55, ease: 'power2.out' }, 0.2)
         .to('[data-particle]', { opacity: 0, duration: 0.2 }, 0.6)
-        .fromTo('[data-ring]', { scale: 0.3, opacity: 0 }, { scale: (i) => 3 + i * 1.5, opacity: 0.9, rotation: (i) => (i % 2 ? -90 : 90), duration: 0.5, stagger: 0.06 }, 0.22)
-        .to('[data-ring]', { opacity: 0, duration: 0.25 }, 0.6)
-        .fromTo('[data-inferno]', { yPercent: 100, opacity: 0 }, { yPercent: 0, opacity: 0.6, duration: 0.3, ease: 'power2.out' }, 0.1)
-        .to('[data-inferno]', { opacity: 0, duration: 0.2 }, 0.45)
-        .to('[data-char]', { opacity: 0.7, duration: 0.25 }, 0.4)
-        .to('[data-plane="far-l"]', { xPercent: -45, yPercent: 15, scale: 1.1, duration: 0.6 }, 0.2)
-        .to('[data-plane="far-r"]', { xPercent: 45, yPercent: 15, scale: 1.1, duration: 0.6 }, 0.2)
-        .to('[data-plane="near-l"]', { xPercent: -110, yPercent: 35, scale: 1.3, duration: 0.55 }, 0.18)
-        .to('[data-plane="near-r"]', { xPercent: 110, yPercent: 35, scale: 1.3, duration: 0.55 }, 0.18)
-        .to('[data-girder="l"]', { xPercent: -80, yPercent: 25, scale: 1.2, duration: 0.55 }, 0.2)
-        .to('[data-girder="r"]', { xPercent: 80, yPercent: 25, scale: 1.2, duration: 0.55 }, 0.2)
-        .to('[data-arch="l"]', { xPercent: -100, scale: 1.15, duration: 0.5, ease: 'power1.in' }, 0.04)
-        .to('[data-arch="r"]', { xPercent: 100, scale: 1.15, duration: 0.5, ease: 'power1.in' }, 0.04)
-        // 35–80%: portal scales in with a violet-gold bloom while the buildings fade out
-        .to('[data-plane], [data-girder], [data-arch]', { opacity: 0, duration: 0.35, ease: 'power1.inOut' }, 0.45)
-        .fromTo('[data-portal]', { scale: 0.6, rotation: 0, opacity: 0 }, { scale: 1.8, rotation: 180, opacity: 1, duration: 0.45, ease: 'sine.inOut' }, 0.35)
-        .fromTo('[data-portal-ring]', { rotation: 0 }, { rotation: -540, duration: 0.65 }, 0.35)
-        .to('[data-particles]', { opacity: 0, duration: 0.25 }, 0.6)
-        // 65–100%: portal bloom and backdrop crossfade out, revealing LabyrinthNav underneath
-        .to('[data-portal]', { opacity: 0, scale: 2.4, duration: 0.35, ease: 'sine.inOut' }, 0.65)
-        .to('[data-backdrop]', { opacity: 0, duration: 0.35, ease: 'sine.inOut' }, 0.65)
-        .fromTo('[data-veil]', { opacity: 0 }, { opacity: 0.45, duration: 0.15, ease: 'sine.inOut' }, 0.6)
-        .to('[data-veil]', { opacity: 0, duration: 0.25, ease: 'sine.inOut' }, 0.75)
+        .to('[data-particles]', { opacity: 0, duration: 0.25 }, 0.55)
+        // 25–95%: the gold rune ring detaches, turns clockwise and grows into the labyrinth dial
+        .fromTo('[data-portal]', { scale: 1, rotation: 0, opacity: 0 }, { scale: 2.6, rotation: 135, duration: 0.7, ease: 'sine.inOut' }, 0.25)
+        .to('[data-portal]', { opacity: 1, duration: 0.15, ease: 'sine.out' }, 0.25)
+        .to('[data-portal]', { opacity: 0, duration: 0.25, ease: 'sine.inOut' }, 0.7)
+        // Obsidian void crossfades away, revealing LabyrinthNav underneath
+        .to('[data-backdrop]', { opacity: 0, duration: 0.3, ease: 'sine.inOut' }, 0.65)
 
       ScrollTrigger.create({
         scroller: wrap,
@@ -700,28 +686,25 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
           <div data-backdrop className="absolute inset-0 bg-[#050507]" />
           <FireSky />
 
+          <div data-tunnel className="absolute inset-0 origin-[50%_calc(50%+4.5vh)] will-change-transform">
           {/* Far plane: deeper towers of the canyon */}
           <div data-plane="far-l" className="absolute inset-y-0 left-0 w-1/2">
             <Skyline side="l" layer="far" />
             <div data-inferno className="pointer-events-none absolute inset-0 opacity-0" style={INFERNO} />
-            <div data-char className="pointer-events-none absolute inset-0 bg-[#050507] opacity-0" />
           </div>
           <div data-plane="far-r" className="absolute inset-y-0 right-0 w-1/2">
             <Skyline side="r" layer="far" />
             <div data-inferno className="pointer-events-none absolute inset-0 opacity-0" style={INFERNO} />
-            <div data-char className="pointer-events-none absolute inset-0 bg-[#050507] opacity-0" />
           </div>
 
           {/* Rooftop cranes cantilevered over the canyon */}
           <div data-girder="l" className="absolute inset-y-0 left-0 w-1/2 origin-bottom-left">
             <Cranes side="l" />
             <div data-inferno className="pointer-events-none absolute inset-0 opacity-0" style={INFERNO} />
-            <div data-char className="pointer-events-none absolute inset-0 bg-[#050507] opacity-0" />
           </div>
           <div data-girder="r" className="absolute inset-y-0 right-0 w-1/2 origin-bottom-right">
             <Cranes side="r" />
             <div data-inferno className="pointer-events-none absolute inset-0 opacity-0" style={INFERNO} />
-            <div data-char className="pointer-events-none absolute inset-0 bg-[#050507] opacity-0" />
           </div>
 
           <GearFloor />
@@ -730,12 +713,10 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
           <div data-plane="near-l" className="absolute inset-y-0 left-0 w-1/2">
             <Skyline side="l" layer="near" />
             <div data-inferno className="pointer-events-none absolute inset-0 opacity-0" style={INFERNO} />
-            <div data-char className="pointer-events-none absolute inset-0 bg-[#050507] opacity-0" />
           </div>
           <div data-plane="near-r" className="absolute inset-y-0 right-0 w-1/2">
             <Skyline side="r" layer="near" />
             <div data-inferno className="pointer-events-none absolute inset-0 opacity-0" style={INFERNO} />
-            <div data-char className="pointer-events-none absolute inset-0 bg-[#050507] opacity-0" />
           </div>
 
           {/* Foreground: soul gem shell; the crest sits on top, inside its heart */}
@@ -744,6 +725,7 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
           </div>
           <div data-arch="r" className="pointer-events-none absolute inset-y-0 right-0 w-1/2 origin-right">
             <ArchHalf flip />
+          </div>
           </div>
 
           {/* Seal, smoke, particles, rings, centred on the gem heart */}
@@ -756,12 +738,6 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
                 style={{ background: `radial-gradient(circle, ${s.c}cc 0%, ${s.c}55 35%, transparent 68%)`, transform: `translate(${s.x}vmax, ${s.y}vmax)`, width: `${s.s}vmax`, height: `${s.s}vmax` }}
               />
             ))}
-            {[0, 1, 2].map((i) => (
-              <svg key={i} data-ring viewBox="-100 -100 200 200" className="absolute h-[22vmin] w-[22vmin] opacity-0" aria-hidden="true">
-                <circle r="96" fill="none" stroke="#f5b942" strokeWidth="1" strokeDasharray={i === 1 ? '1 5' : '14 4 2 4'} />
-                <circle r="86" fill="none" stroke="#f5b942" strokeOpacity="0.5" strokeWidth="0.6" />
-              </svg>
-            ))}
             {particles.map((p, i) => (
               <span
                 key={i}
@@ -770,27 +746,16 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
                 style={{ width: p.size, height: p.size, background: p.gold ? '#f5b942' : '#c084fc', boxShadow: `0 0 12px ${p.gold ? '#f5b942' : '#9333ea'}` }}
               />
             ))}
-            <div data-orb className="relative h-[min(52vmin,460px)] w-[min(52vmin,460px)]">
+            <div data-orb className="relative h-[min(52vmin,460px)] w-[min(52vmin,460px)] will-change-transform">
               <div data-orb-glow className="absolute -inset-[15%] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(88,28,135,0.18), transparent)' }} />
-              <div data-orb-half="l" className="will-change-transform absolute inset-0 [clip-path:inset(-20%_50%_-20%_-20%)]">
-                <SoulGemSeal uid="orb-l" />
-              </div>
-              <div data-orb-half="r" className="will-change-transform absolute inset-0 [clip-path:inset(-20%_-20%_-20%_50%)]">
-                <SoulGemSeal uid="orb-r" />
-              </div>
+              <SoulGemSeal uid="orb" />
               {/* Twin lizards ring the gem core, under the title; kept dim so the serif stays crisp. */}
               <div className="pointer-events-none absolute inset-[12.5%] opacity-80">
                 <TwinLizardSeal period={35} />
               </div>
-              {/* Energy fissure tearing down the seam */}
-              <div
-                data-fissure
-                className="pointer-events-none absolute top-[-15%] left-[calc(50%-40px)] h-[130%] w-[80px] opacity-0"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(245,185,66,0.35) 30%, rgba(217,70,239,0.8) 44%, #fdf4ff 48%, #fdf4ff 52%, rgba(217,70,239,0.8) 56%, rgba(245,185,66,0.35) 70%, transparent)', maskImage: 'linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent)' }}
-              />
             </div>
-            <div data-portal className="pointer-events-none absolute h-[min(40vmin,360px)] w-[min(40vmin,360px)] opacity-0">
-              <svg data-portal-ring viewBox="-200 -200 400 400" className="absolute inset-0 h-full w-full overflow-visible will-change-transform" aria-hidden="true">
+            <div data-portal className="pointer-events-none absolute h-[min(66.2vmin,585px)] w-[min(66.2vmin,585px)] opacity-0 will-change-transform">
+              <svg data-portal-ring viewBox="-200 -200 400 400" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
                 <defs>
                   <path id="portal-runes" d="M0,-120 a120,120 0 1,1 -0.01,0" />
                 </defs>
@@ -801,13 +766,6 @@ export function EntranceSequence({ active, onComplete }: { active: boolean; onCo
               </svg>
             </div>
           </div>
-
-          {/* Dark smoke the camera passes through into the labyrinth */}
-          <div
-            data-veil
-            className="pointer-events-none absolute inset-0 opacity-0"
-            style={{ background: '#050507' }}
-          />
 
           {/* Falling feathers and rising embers, behind the title */}
           <ParticleCanvas progress={progress} />
