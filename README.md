@@ -19,8 +19,8 @@
 
 ## The stage
 
-### Entrance & smoke reveal · `EntranceSequence`
-A scroll-driven obsidian hero (Lenis smooth scroll + GSAP ScrollTrigger). A Gothic cathedral arch frames a horizon crossed by steel girders, and *daten* feathers drift down through it. At its centre the Dark Orb and the twin *Tokage-san* seal burst into violet-and-crimson smoke to reveal the labyrinth. **ENTER LABYRINTH** skips straight there; **Replay intro** runs it again.
+### Entrance & tunnel reveal · `EntranceSequence`
+A scroll-driven obsidian hero (Lenis smooth scroll + GSAP ScrollTrigger). A canyon of burning skyscrapers recedes to a vanishing point under a firestorm sky, with tower cranes overhead and burning *daten* feathers and sparks drifting through it. At its centre a dark soul-gem shell holds the Dark Orb, ringed by twin *Tokage-san* seals. Scrolling plunges the camera through the gem and smoke, and its gold rune ring turns and grows into the labyrinth dial. **ENTER LABYRINTH** skips straight there; **Replay intro** runs it again.
 
 ### Clockwork wheel & gecko · `LabyrinthNav`
 - A brass dial, pivoted off-screen, turns one quadrant at a time: **I** Profile · **II** Projects · **III** Experience & Stack · **IV** Contact & CV.
@@ -30,7 +30,7 @@ A scroll-driven obsidian hero (Lenis smooth scroll + GSAP ScrollTrigger). A Goth
 - Navigate with the I–IV selector, Prev/Next, arrow keys or scroll. Every control is a real button, stage changes are announced to screen readers, and `prefers-reduced-motion` is respected.
 
 ### Baroque soundscape · `soundEngine`
-An optional Web Audio synth with no dependencies. It plays a 3/4 waltz in G harmonic minor (hall reverb, staccato string ostinato, dark choir pad and a solo lead) over clock-escapement ticks. It stays silent until you turn it on.
+Optional, and silent until you turn it on. A pre-rendered loop (`public/audio/bgm.mp3`) plays when available; otherwise a dependency-free Web Audio synth renders it live. It plays a 3/4 waltz in G harmonic minor (hall reverb, staccato string ostinato, dark choir pad and a solo lead) over clock-escapement ticks.
 
 ### Palette
 
@@ -40,6 +40,8 @@ An optional Web Audio synth with no dependencies. It plays a 3/4 waltz in G harm
 | Antique gold | `#f5b942` |
 | Violet glow | `#7c3aed` |
 | Crimson accent | `#e11d48` |
+
+Type is Cormorant Garamond for display and Inter for body, loaded from Google Fonts.
 
 ## Architecture
 
@@ -59,10 +61,12 @@ src/
 └── utils/
     └── soundEngine.ts         # Procedural waltz + clockwork SFX
 public/
-├── cv.pdf  ·  favicon.svg  ·  _redirects
+├── audio/bgm.mp3  ·  favicon.svg  ·  _redirects
+e2e/                           # Playwright specs, one per PR
+.github/workflows/ci.yml       # Lint, build and e2e on every PR
 ```
 
-All copy lives in [`src/data/profile.ts`](src/data/profile.ts). To replace the CV, swap `public/cv.pdf`.
+All copy lives in [`src/data/profile.ts`](src/data/profile.ts). The CV is available on request.
 
 ## Local development
 
@@ -74,6 +78,7 @@ npm run dev        # http://localhost:5173
 npm run build      # tsc -b, then build to dist/
 npm run preview    # serve the production build
 npm run lint       # oxlint
+npm run e2e        # Playwright end-to-end tests
 ```
 
 SPA rewrites are included for Vercel (`vercel.json`) and Netlify (`public/_redirects`).
