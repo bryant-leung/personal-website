@@ -66,7 +66,7 @@ e2e/                           # Playwright specs, one per PR
 .github/workflows/ci.yml       # Lint, build and e2e on every PR
 ```
 
-All copy lives in [`src/data/profile.ts`](src/data/profile.ts). The CV is available on request.
+All copy lives in [`src/data/profile.ts`](src/data/profile.ts). The public CV is [`public/Bryant-Leung-CV.pdf`](public/Bryant-Leung-CV.pdf) (contact details and marks trimmed); the full version is on request.
 
 ## Local development
 

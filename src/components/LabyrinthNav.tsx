@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Cpu,
+  Download,
   ExternalLink,
   FileText,
   FolderGit2,
@@ -56,7 +57,7 @@ interface DetailItem {
 interface Action {
   label: string
   href: string
-  kind: 'external' | 'mail'
+  kind: 'external' | 'mail' | 'download'
 }
 
 interface LabNode {
@@ -88,8 +89,13 @@ const techGroups = profile.skills.filter((s) => s.category !== 'Certifications' 
 const fyp = profile.projects.find((p) => p.id === 'graphrag-disaster')!
 const finalYearModules = education[0]?.bullets.find((b) => b.startsWith('Final year'))
 const cvAction: Action = {
-  label: 'Request my CV',
-  href: `mailto:${profile.email}?subject=${encodeURIComponent('CV request')}`,
+  label: 'Download CV',
+  href: '/Bryant-Leung-CV.pdf',
+  kind: 'download',
+}
+const fullCvAction: Action = {
+  label: 'Request full CV',
+  href: `mailto:${profile.email}?subject=${encodeURIComponent('Full CV request')}`,
   kind: 'mail',
 }
 const mailAction: Action = { label: profile.email, href: `mailto:${profile.email}`, kind: 'mail' }
@@ -231,16 +237,16 @@ const CHAPTERS: Chapter[] = [
     numeral: 'IV',
     title: 'Contact & CV',
     jpTitle: '連絡先',
-    blurb: 'Request my CV, find me online, or write to me.',
+    blurb: 'Download my CV, find me online, or write to me.',
     nodes: [
       {
         id: 'resume',
         title: 'Resume',
         icon: FileText,
-        summary: 'My full CV is available on request. Email me and I will send the latest version.',
-        tags: ['On request'],
+        summary: 'A public version of my CV is a download away. Email me if you would like the full version.',
+        tags: ['PDF'],
         items: [],
-        actions: [cvAction],
+        actions: [cvAction, fullCvAction],
       },
       {
         id: 'profiles',
@@ -866,12 +872,13 @@ function DetailPanel({
       {node.actions.length > 0 && (
         <div className="mt-5 flex flex-wrap gap-2">
           {node.actions.map((a) => {
-            const Icon = a.kind === 'mail' ? Mail : ExternalLink
+            const Icon = a.kind === 'mail' ? Mail : a.kind === 'download' ? Download : ExternalLink
             return (
               <a
                 key={`${a.kind}-${a.label}`}
                 href={a.href}
                 {...(a.kind === 'external' ? { target: '_blank', rel: 'noreferrer' } : {})}
+                {...(a.kind === 'download' ? { download: 'Bryant-Leung-CV.pdf' } : {})}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[#f5b942]/40 bg-[#f5b942]/10 px-3 py-1.5 text-sm text-[#f5b942] transition hover:bg-[#f5b942]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5b942]"
               >
                 <Icon size={14} aria-hidden="true" />
