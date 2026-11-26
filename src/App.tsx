@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { Download, RotateCcw } from 'lucide-react'
 import { ENTRANCE_DONE_KEY } from './components/entranceKey'
 import { LabyrinthNav } from './components/LabyrinthNav'
 import { setSoundEnabled } from './utils/soundEngine'
@@ -63,6 +63,16 @@ export default function App() {
           </span>
           <span className="hidden sm:inline">{sound ? 'SOUND ON' : 'SOUND OFF'}</span>
         </button>
+        <a
+          href="/Bryant-Leung-CV.pdf"
+          download="Bryant-Leung-CV.pdf"
+          aria-label="Download CV"
+          title="Download CV"
+          className="hidden sm:flex items-center gap-2 rounded-full border border-[#f5b942]/70 bg-[#0b0914]/70 px-3 py-2.5 sm:px-4 sm:py-2 text-sm font-medium tracking-wide text-[#f5b942] shadow-[0_0_18px_rgba(245,185,66,0.25),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:border-[#e2d9f3] hover:text-[#e2d9f3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2d9f3]"
+        >
+          <Download size={15} aria-hidden="true" />
+          <span className="hidden sm:inline">CV</span>
+        </a>
         {entered && (
           <button
             type="button"

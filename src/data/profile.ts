@@ -185,8 +185,8 @@ export const profile = {
       kind: 'education',
       summary: 'First-class average. Top 5 in the UK for Computer Science (Complete University Guide 2026).',
       bullets: [
-        'Year 1: 76.3% (Object-Oriented Programming 94%, Artificial Intelligence 1 79%, Mathematical and Logical Foundations 79%).',
-        'Year 2: 73.3% (Software Engineering 82%, Functional Programming 76%, Security and Networks 75%).',
+        '240 of 240 credits passed at first attempt; Year 1 average 76% and Year 2 average 73%.',
+        'Highest marks: Object-Oriented Programming 94%, Software Engineering 82%, Artificial Intelligence 1 and Mathematical and Logical Foundations 79%.',
         'Final year: Computer Science Project, Natural Language Processing, Neural Computation, Computer Vision and Imaging, Security of Real-World Systems.',
       ],
     },

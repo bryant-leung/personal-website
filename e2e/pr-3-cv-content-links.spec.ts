@@ -40,7 +40,7 @@ test('experience lists work and leadership, not the hackathon', async ({ page })
   await expect(panel).not.toContainText('Decode and Detect')
 })
 
-test('education shows full CV module marks', async ({ page }) => {
+test('education shows year averages and highest marks', async ({ page }) => {
   const panel = await open(page, 'Profile', 'Education')
-  await expect(panel).toContainText('Security and Networks 75%')
+  await expect(panel).toContainText('Year 2 average 73%')
 })
